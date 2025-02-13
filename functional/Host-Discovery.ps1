@@ -1,5 +1,3 @@
-# Set the execution policy (in the actual end product, this will be done by the user(?) or at the beginning of the main script running)
-# Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Scope Process
 Import-Module $PSScriptRoot\modules\SubNet-Calculate.psm1
 
 # Concept: 
@@ -9,14 +7,39 @@ Import-Module $PSScriptRoot\modules\SubNet-Calculate.psm1
 
 #============= FOR TESTING, USING THE USER'S IP ADDRESS: THIS IS TEMPORARY!!=================
 # Get the base IP Addresses, ignoring loopback (127.0.0.1), and selecting only IPV4 (FOR NOW!!) as well as just the object IPAddress CONVERT to string
-$baseAddresses = (Get-NetIPAddress | Where-Object {$_.AddressFamily -eq 'IPv4' -and $_.InterfaceAlias -ne 'Loopback'} | Select-Object IPAddress)
-foreach($baseAddress in $baseAddresses)
-{
-    # In actual case: rather than writing out all the subnets: ping each ip + the corresponding subnets
-    # Arbitrary # of subnets
-    Write-IPSubnet $baseAddress.IPAddress 20
-}   
+$baseAddress = (Get-NetIPAddress | Where-Object {$_.AddressFamily -eq 'IPv4' -and $_.InterfaceAlias -ne 'Loopback'} | Select-Object IPAddress)[0]
 
-# Write-Output("Testing Connection with IPAddress: " + $address.IPAddress.ToString())
-# Only get the results of connections where the PingSucceeded variable is TRUE, then output the successful computerames (IP)
-# Test-NetConnection $addresses.IPAddress.ToString() | Where-Object {$_.PingSucceeded} | ForEach-Object{Write-Output($address.IPAddress.ToString())}
+# Get the number of subnets wanted for the base address (arbitrary 24)
+$ipAddresses = Select-IPSubnet $baseAddress.IPAddress 24
+
+foreach($ipAddress in $ipAddresses)
+{
+    Write-Output "Scan report for $ipAddress"
+
+    # ICMP echo request (PING): with -Quiet to do basic ping 
+    # and only return output of those where ping is "Succeeded", true = reached target
+    $pingCheck = Test-Connection $ipAddress -Quiet
+    if($pingCheck)
+    {
+        Write-Output "Host is up"
+    } else 
+    {
+        Write-Output "Host is down"
+    }
+
+    # Note: it is possible for host to be down but the port open since port check is separate (not whole system health)
+    # TCP SYN Packet to port 443: "TCPTest Succeeded", true = open, false = closed
+    $portCheck = Test-NetConnection $ipAddress -Port 433 -InformationLevel:Quiet
+    if($portCheck)
+    {
+        Write-Output "Port 433 is open"
+    } else 
+    {
+        Write-Output "Port 433 is closed"
+    }
+
+    Write-Output "-------------------------"
+
+    # TCP ACK
+    # $ackCheck 
+}   
