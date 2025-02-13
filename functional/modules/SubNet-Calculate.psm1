@@ -37,3 +37,15 @@ function Write-IPSubnet([string]$address, [int]$subnet) {
 		Write-Output $result.ToString()
 	}
 }
+
+# Function to be leveraged: gets all the IPAddress + Subnets and returns them in array format
+function Select-IPSubnet([string]$address, [int]$subnet) {
+	$maxPos = 1 -shl (32 - $subnet)
+	$ipObject = [IPAddress]$address
+	$ipArray = @() # To hold the objects for the result
+	for ( $i = 0; $i -lt $maxPos; $i++) {
+		$result = Get-IPSubnet $ipObject $subnet $i
+		$ipArray += $result
+	}
+	return $ipArray
+}
