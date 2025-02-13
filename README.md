@@ -1,6 +1,6 @@
 # ShellMap
 ## Modules in Use
-[[https://learn.microsoft.com/en-us/powershell/module/nettcpip/?view=windowsserver2025-ps][Module Resources]]
+- [PS Module Resources](https://learn.microsoft.com/en-us/powershell/module/nettcpip/?view=windowsserver2025-ps)
 - DnsClient
 - NetTCPIP
 
