@@ -37,7 +37,7 @@ def check_host_list(option, opt, value):
         raise OptionValueError("option %s: invalid list value: %r" % (opt, value))
 
 class ShellMapOption (Option):
-    TYPES = Option.TYPES + ("port_list",) + ("host_list",)
+    TYPES = Option.TYPES + ("port_list",)# + ("host_list",)
     TYPE_CHECKER = copy(Option.TYPE_CHECKER)
     TYPE_CHECKER["port_list"] = check_port_list
-    TYPE_CHECKER["host_list"] = check_host_list
+    #TYPE_CHECKER["host_list"] = check_host_list
