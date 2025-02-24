@@ -48,8 +48,8 @@ class Argument:
         # declare parser with custom argument parsing options
         self.parser = OptionParser(option_class=ShellMapOption)
         self.load_parser_rules()
-        # takes a list of tuples (module_name, module_file_path)
-        self.modules = [ (Path(f.path).stem, f.path) for f in os.scandir(os.path.join(os.getcwd(), "modules")) if f.is_file() ]
+        # creates a mapping between functional modules and their corresponding files
+        self.modules = dict([ (Path(f.path).stem, f.path) for f in os.scandir(os.path.join(os.getcwd(), "modules")) if f.is_file() ])
         self.load_dependencies()
 
     def load_parser_rules(self):
@@ -75,10 +75,20 @@ class Argument:
         self.parser.add_option("-r", action="store_false", dest="randomize_ports", default=True)
         self.parser.add_option("-sV", action="store_true", dest="service_version", default=False)
         self.parser.add_option("-O", action="store_true", dest="os_detect", default=False)
-        self.parser.add_option("-sS", action="store_const", const="SYN", dest="port_default_scan", default="SYN")
-        self.parser.add_option("-sT", action="store_const", const="CON", dest="port_default_scan", default="SYN")
-        self.parser.add_option("-sA", action="store_const", const="ACK", dest="port_default_scan", default="SYN")
 
+        # options that store a string as their value are maps to a functional module
+        # ex: these tell the fd determiner that it should add a particular module
+        self.parser.add_option("-sS", action="store_const", const="port_syn_scan", dest="port_default_scan", default="port_syn_scan")
+        self.parser.add_option("-sT", action="store_const", const="port_con_scan", dest="port_default_scan", default="port_syn_scan")
+        self.parser.add_option("-sA", action="store_const", const="port_ack_scan", dest="port_default_scan", default="port_syn_scan")
+
+    def record_port_scan(option, opt_str, value, parser):
+        if (opt_str == "-sS"):
+            parser.values.port_syn_scan = True
+        elif (opt_str == "-sT"):
+            parser.values.port_con_scan = True
+        elif (opt_str == "-sA"):
+            parser.values.port_con_scan = True
 
     # we will not support ranged ips: 192.168.0-255.1-255
     # domain names must not have slashes: slashes are only used to designate subnets
@@ -111,6 +121,8 @@ class Argument:
                     # has dependency
                     self.dependencies[line_fields[0]] = line_fields[1:]
     def process_args(self, arg_str):
+        # string to hold all of the required script text
+        script_str = ""
         # collect options and arguments from parsing the input
         # args should just be a list of hosts
         (options, args) = self.parser.parse_args(arg_str.split(' '))
@@ -118,46 +130,49 @@ class Argument:
         hosts = check_host_list(args)
         opt_dict = ast.literal_eval(str(options))
 
-        # collect required functional modules
-        fm_lst = collect_modules(opt_dict)
+        # collect required functional modules, and arguments to those functional modules
+        fm_lst, opt_args = collect_modules(opt_dict)
+
+        # add option arguments and target specs to beginning as global variables
+        for k, v in opt_args.items():
+            tmp_str = "$" + k.upper() + " = " + v
+
+        # use mapping between fd names and modules to concatenate scripts
 
 
     def collect_modules(self, options):
-        deps_col = []
         deps = []
+        added = dict.fromkeys(self.dependencies.keys(), False)
+        opt_args = {}
 
         for k in options.keys():
-            deps_col.extend(fd_helper(k))
+            fd_helper(k, deps, added, opts)
+            if not isinstance(options[k], str) and not isinstance(options[k], bool):
+                opt_args[k] = options[k]
 
-        for i in deps_col:
-            if i in deps:
-                pass
-            else:
-                deps.append(i)
+        return (deps, opt_args)
 
-        return deps
+    def fd_helper(self, k, dep_lst, added_dict, opts):
+        # if option holds a string, set the key to that string
+        if isinstance(opts[k], str):
+            k = opts[k]
 
-    def fd_helper(self, k):
+        if not added_dict[k]:
+            return
+
+        # if a functional module has no dependencies, check that
+        # it isn't already added and is it isn't, add it
         if (len(self.dependencies[k]) == 0):
-            return list(k)
+            dep_lst.append(k)
+            added_dict[k] = True
+        # otherwise if the module has dependencies, recursively add
+        # the dependencies and then add the initial module
         else:
-            sub_deps = []
             for dep in self.dependencies[k]:
-                sub_deps.extend(fd_helper(dep))
-            sub_deps.append(k)
-            return sub_deps
+                fd_helper(dep, dep_lst, added_dict)
+            deps_lst.append(k)
+            added_dict[k] = True
 
-
-class Flag(Enum):
-    PING_SCAN = 1
-    ICMP_SCAN = 2
-    PORT_SCAN = 3
-    LIST_SCAN = 4
-    NO_HOST_DISC = 5
-    PORT_RANGE = 6
-    IPV6 = 7
-    TRACERT = 8
-    ALL = 9
 
 class RequestHandler(BaseHTTPRequestHandler):
     def __init___(self):
