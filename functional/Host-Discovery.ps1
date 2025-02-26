@@ -10,28 +10,43 @@ Write-Output "Starting ShellMap at $startTime $timeZone"
 # Output the successfully pinged ip addresses (hosts that are up)
 
 # Check if input is a hostname, resolve it to a ip address before continuing:
-$baseWeb = "www.google.com" # Replace with arg input from user
+$baseWeb = "scanme.nmap.org" # Replace with arg input from user
 
 # ONLY get the IPv4 (for the subnet calculator!)
 $resolvedIP = (Resolve-DnsName -Name $baseWeb -Type A | Select-Object -First 1).IPAddress
-# Get the number of subnets wanted for the base address (arbitrary 24/1 for debugging) WILL BE REPLACED WITH INPUT
+# Get the number of subnets wanted for the base address (arbitrary 24/0 for debugging) WILL BE REPLACED WITH INPUT
 $ipAddresses = Select-IPSubnet $resolvedIP 0
 
 # (NMap done: [#IP Addresses (256)] IP addresses, ([#Hosts up] hosts up) scanned in [total ping time] seconds)
 Write-Output "ShellMap scan report for $resolvedIP"
 $activeHosts = 0
+$activePrintCount = 0
 $numAddresses = $ipAddresses.Count
 
 $startTime = Get-Date
 foreach($ipAddress in $ipAddresses)
 {
-    # ICMP echo request (PING): with -Quiet to do basic ping 
-    # and only return output of those where ping is "Succeeded", true = reached target
-    $pingCheck = Test-Connection $ipAddress -Quiet
-    # Add to the active hosts if the ping is TRUE:
+    # ICMP echo request (PING): with -Quiet to do basic ping (and count of 1 to send 1 ping packet)
+    # NOTE: If we want to add it: different ping depending on the input flag (generic is ICMP echo)
+    $pingCheck = Test-Connection $ipAddress -Quiet -Count 1
+    # Add to the count of active hosts if the ping is TRUE:
     if($pingCheck)
     {
         $activeHosts ++
+        if($activePrintCount -le 3) # Don't allow over 3 print statements:
+        {
+            Write-Output "Host $ipAddress appears to be up."
+            $activePrintCount ++
+        } else 
+        {          
+            $hostsCut = $activeHosts - $activePrintCount
+            Write-Output "[$hostsCut hosts cut]"
+        }
+        
+        
+    } else 
+    {
+        Write-Output "Not up."
     }
 }
 $endTime = Get-Date
