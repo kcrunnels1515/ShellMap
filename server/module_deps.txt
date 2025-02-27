@@ -1,11 +1,10 @@
 ports | PORTS
 ports_ack | PORTS_ACK
-posts_syn | PORTS_SYN
+ports_syn | PORTS_SYN
 ports_udp | PORTS_UDP
 ports_sctp | PORTS_SCTP
 excluded_ports | EXCL_PORTS
 top_ports | TOP_PORTS
-
 list_scan
 ping_scan
 host_disc
@@ -18,7 +17,6 @@ limit_ports
 randomize_ports
 service_version
 os_detect
-
 port_syn_scan
 port_con_scan
 port_ack_scan

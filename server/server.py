@@ -50,7 +50,7 @@ class Argument:
         # map between modules and the variables they need to have set
         self.variables = dict()
         # declare parser with custom argument parsing options
-        self.parser = OptionParser(option_class=ShellMapOption)
+        self.parser = OptionParser(option_class=co.ShellMapOption)
         self.load_parser_rules()
         # creates a mapping between functional modules and their corresponding files
         self.modules = dict([ (Path(f.path).stem, f.path) for f in os.scandir(os.path.join(os.getcwd(), "modules")) if f.is_file() ])
@@ -59,34 +59,35 @@ class Argument:
     def load_parser_rules(self):
         # options that add data
         self.parser.add_option("-p", action="store", type="port_list", dest="ports")
-        self.parser.add_option("-PS", action="store", type="port_list", dest="ports_syn")
-        self.parser.add_option("-PA", action="store", type="port_list", dest="ports_ack")
-        self.parser.add_option("-PU", action="store", type="port_list", dest="ports_udp")
-        self.parser.add_option("-PY", action="store", type="port_list", dest="ports_sctp")
+        self.parser.add_option("--PS", action="store", type="port_list", dest="ports_syn")
+        self.parser.add_option("--PA", action="store", type="port_list", dest="ports_ack")
+        self.parser.add_option("--PU", action="store", type="port_list", dest="ports_udp")
+        self.parser.add_option("--PY", action="store", type="port_list", dest="ports_sctp")
         self.parser.add_option("--exclude-ports", action="store", type="port_list", dest="excluded_ports")
         self.parser.add_option("--top-ports", action="store", type="int", dest="top_ports")
 
         # options that modify behavior
-        self.parser.add_option("-sL", action="store_true", dest="list_scan", default=False)
-        self.parser.add_option("-sn", action="store_true", dest="ping_scan", default=False)
-        self.parser.add_option("-Pn", action="store_false", dest="host_disc", default=True)
-        self.parser.add_option("-PE", action="store_true", dest="icmp_echo", default=False)
-        self.parser.add_option("-PP", action="store_true", dest="icmp_timestamp", default=False)
-        self.parser.add_option("-PM", action="store_true", dest="icmp_netmasq", default=False)
+        self.parser.add_option("--sL", action="store_true", dest="list_scan", default=False)
+        self.parser.add_option("--sn", action="store_true", dest="ping_scan", default=False)
+        self.parser.add_option("--Pn", action="store_false", dest="host_disc", default=True)
+        self.parser.add_option("--PE", action="store_true", dest="icmp_echo", default=False)
+        self.parser.add_option("--PP", action="store_true", dest="icmp_timestamp", default=False)
+        self.parser.add_option("--PM", action="store_true", dest="icmp_netmasq", default=False)
         self.parser.add_option("-n", action="store_false", dest="resolve", default=True)
-        self.parser.add_option("-sU", action="store_true", dest="port_udp_default", default=False)
+        self.parser.add_option("--sU", action="store_true", dest="port_udp_default", default=False)
         self.parser.add_option("-F", action="store_true", dest="limit_ports", default=False)
         self.parser.add_option("-r", action="store_false", dest="randomize_ports", default=True)
-        self.parser.add_option("-sV", action="store_true", dest="service_version", default=False)
+        self.parser.add_option("--sV", action="store_true", dest="service_version", default=False)
         self.parser.add_option("-O", action="store_true", dest="os_detect", default=False)
 
         # options that store a string as their value are maps to a functional module
         # ex: these tell the fd determiner that it should add a particular module
-        self.parser.add_option("-sS", action="store_const", const="port_syn_scan", dest="port_default_scan", default="port_syn_scan")
-        self.parser.add_option("-sT", action="store_const", const="port_con_scan", dest="port_default_scan", default="port_con_scan")
-        self.parser.add_option("-sA", action="store_const", const="port_ack_scan", dest="port_default_scan", default="port_ack_scan")
+        self.parser.add_option("--sS", action="store_const", const="port_syn_scan", dest="port_default_scan", default="port_syn_scan")
+        self.parser.add_option("--sT", action="store_const", const="port_con_scan", dest="port_default_scan", default="port_syn_scan")
+        self.parser.add_option("--sA", action="store_const", const="port_ack_scan", dest="port_default_scan", default="port_syn_scan")
 
     def load_dependencies(self):
+        #breakpoint()
         with open('module_deps.txt', 'r') as deps:
             # reads a dependency file line by line
             # each line is of the format:
@@ -122,12 +123,12 @@ class Argument:
         # args should just be a list of hosts
         (options, args) = self.parser.parse_args(arg_str.split(' '))
         # interpret list of hosts as list of (host, subnet) pairs
-        hosts = check_host_list(args)
+        hosts = self.convert_targets(args)
         opt_dict = ast.literal_eval(str(options))
 
         # collect required functional modules, and arguments to those functional modules
-        fm_lst, opt_args = collect_modules(opt_dict)
-
+        fm_lst, opt_args = self.collect_modules(opt_dict)
+        #breakpoint()
         # add option arguments and target specs to beginning as global variables
         for k, v in opt_args.items():
             script_str += f"${k.upper()} = {v}\n"
@@ -135,7 +136,7 @@ class Argument:
         # use mapping between fd names and modules to concatenate scripts
         for mod in fm_lst:
             with open(self.modules[mod], 'r') as mod_file:
-                script_str += mod_file.read()
+                script_str += mod_file.read() + "\n"
 
         return script_str
 
@@ -143,22 +144,28 @@ class Argument:
         deps = []
         added = dict.fromkeys(self.dependencies.keys(), False)
         opt_args = {}
-
+        #breakpoint()
         for k in options.keys():
-            fd_helper(k, deps, added, options)
-            if isinstance(options[k], list):
-                opt_args[self.variables[k]] = self.convert_portlist(options[k])
-            if isinstance(options[k], int):
-                opt_args[self.variables[k]] = str(options[k])
+            if options[k] is not None:
+                self.fd_helper(k, deps, added, options)
+                if isinstance(options[k], list):
+                    opt_args[self.variables[k]] = self.convert_portlist(options[k])
+                elif isinstance(options[k], int):
+                    opt_args[self.variables[k]] = str(options[k])
 
         return (deps, opt_args)
 
     def fd_helper(self, k, dep_lst, added_dict, opts):
+        #breakpoint()
+        if opts[k] is None:
+            return
+        if opts[k] == False:
+            return
         # if option holds a string, set the key to that string
         if isinstance(opts[k], str):
             k = opts[k]
 
-        if not added_dict[k]:
+        if added_dict[k]:
             return
 
         # if a functional module has no dependencies, check that
@@ -170,18 +177,18 @@ class Argument:
         # the dependencies and then add the initial module
         else:
             for dep in self.dependencies[k]:
-                fd_helper(dep, dep_lst, added_dict)
+                self.fd_helper(dep, dep_lst, added_dict)
             deps_lst.append(k)
             added_dict[k] = True
 
-    def convert_portlist(port_lst):
+    def convert_portlist(self, port_lst):
         ret_str = "@("
         for port, rng in port_lst:
-            ret_str += "[PSCustomObject]@{ PORT = " + port +"; RANGE = " + rng + "},"
+            ret_str += "[PSCustomObject]@{ PORT = " + str(port) +"; RANGE = " + str(rng) + "},"
         ret_str = ret_str[:-1] + ")"
         return ret_str
 
-    def convert_targets(host_lst):
+    def convert_targets(self, host_lst):
         # just a list of targets, as specified in CLI
         # have to join and then split, bc args are split on spaces
         #
@@ -213,11 +220,12 @@ class Argument:
 
 
 class RequestHandler(BaseHTTPRequestHandler):
-    def __init___(self):
+    def __init__(self, *args):
         self.cur_arg = Argument()
+        BaseHTTPRequestHandler.__init__(self, *args)
 
     def collect_script(self, arg_str):
-        return "test"
+        return self.cur_arg.process_args(arg_str)
 
     def do_GET(self):
         query = urlparse(self.path).query
@@ -229,6 +237,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             self.wfile.write(b"no args\n")
         else:
             query_str = decode(query_components['args'])
+            print(f"Query string: {query_str}")
             if len(query_str) > 0:
                 self.send_response(200)
                 self.send_header('Content-type', 'text/plain')
@@ -248,4 +257,5 @@ def run_server(server_class=HTTPServer, handler_class=RequestHandler, port=8000)
 
 
 if __name__ == "__main__":
+    import pdb
     run_server()
