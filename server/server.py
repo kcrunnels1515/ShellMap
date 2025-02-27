@@ -9,6 +9,7 @@ import custom_optparse as co
 from optparse import OptionParser
 import os
 from pathlib import Path
+import re
 
 # load module names and file paths as tuples
 module_files = [ (Path(f.path).stem, f.path) for f in os.scandir(os.path.join(os.getcwd(), "modules")) if f.is_file() ]
@@ -44,7 +45,10 @@ def decode(data: str) -> str:
 
 class Argument:
     def __init__(self):
+        # map between modules and list of modules they depend on
         self.dependencies = dict()
+        # map between modules and the variables they need to have set
+        self.variables = dict()
         # declare parser with custom argument parsing options
         self.parser = OptionParser(option_class=ShellMapOption)
         self.load_parser_rules()
@@ -69,7 +73,7 @@ class Argument:
         self.parser.add_option("-PE", action="store_true", dest="icmp_echo", default=False)
         self.parser.add_option("-PP", action="store_true", dest="icmp_timestamp", default=False)
         self.parser.add_option("-PM", action="store_true", dest="icmp_netmasq", default=False)
-        self.parser.add_option("-n", action="store_false", dest="no_resolv", default=True)
+        self.parser.add_option("-n", action="store_false", dest="resolve", default=True)
         self.parser.add_option("-sU", action="store_true", dest="port_udp_default", default=False)
         self.parser.add_option("-F", action="store_true", dest="limit_ports", default=False)
         self.parser.add_option("-r", action="store_false", dest="randomize_ports", default=True)
@@ -79,47 +83,38 @@ class Argument:
         # options that store a string as their value are maps to a functional module
         # ex: these tell the fd determiner that it should add a particular module
         self.parser.add_option("-sS", action="store_const", const="port_syn_scan", dest="port_default_scan", default="port_syn_scan")
-        self.parser.add_option("-sT", action="store_const", const="port_con_scan", dest="port_default_scan", default="port_syn_scan")
-        self.parser.add_option("-sA", action="store_const", const="port_ack_scan", dest="port_default_scan", default="port_syn_scan")
-
-    def record_port_scan(option, opt_str, value, parser):
-        if (opt_str == "-sS"):
-            parser.values.port_syn_scan = True
-        elif (opt_str == "-sT"):
-            parser.values.port_con_scan = True
-        elif (opt_str == "-sA"):
-            parser.values.port_con_scan = True
-
-    # we will not support ranged ips: 192.168.0-255.1-255
-    # domain names must not have slashes: slashes are only used to designate subnets
-    def check_host_list(self, host_list):
-        val_lst = [ h.replace(" ", "").split(',') for h in host_list]
-        ret_lst = []
-        for p in val_lst:
-            if '/' in p:
-                p_lst = p.split("/")
-                # if the element has a subnet, convert it to an int
-                ret_lst.append(p_lst[0], int(p_lst[1]))
-            else:
-                ret_lst.append((int(p), 0))
-        return ret_lst
+        self.parser.add_option("-sT", action="store_const", const="port_con_scan", dest="port_default_scan", default="port_con_scan")
+        self.parser.add_option("-sA", action="store_const", const="port_ack_scan", dest="port_default_scan", default="port_ack_scan")
 
     def load_dependencies(self):
         with open('module_deps.txt', 'r') as deps:
             # reads a dependency file line by line
             # each line is of the format:
-            #   A B C
+            #   A B C [| VARIABLE]
             # where A is a module, and B and C are modules that A
-            # depends on
+            # depends on, and the optional VARIABLE is a global variable that
+            # A will set
+            # for example, setting a port list will require functionality AND data accessible
+            mods = []
+            var = ""
             for line in deps:
-                line_fields = line.strip().split(' ')
+                if '|' in line:
+                    mods_n_var = line.split('|')
+                    mods = re.findall(r"[a-zA-Z0-9-_]+", mods_n_var[0])
+                    var = mods_n_var[1].strip()
+                else:
+                    mods = re.findall(r"[a-zA-Z0-9-_]+", line)
 
-                if len(line_fields == 1):
+                if len(mods) == 1:
                     # no dependency
-                    self.dependencies[line_fields[0]] = []
+                    self.dependencies[mods[0]] = []
                 else:
                     # has dependency
-                    self.dependencies[line_fields[0]] = line_fields[1:]
+                    self.dependencies[mods[0]] = mods[1:]
+
+                if len(var) > 0:
+                    self.variables[mods[0]] = var
+
     def process_args(self, arg_str):
         # string to hold all of the required script text
         script_str = ""
@@ -135,10 +130,14 @@ class Argument:
 
         # add option arguments and target specs to beginning as global variables
         for k, v in opt_args.items():
-            tmp_str = "$" + k.upper() + " = " + v
+            script_str += f"${k.upper()} = {v}\n"
 
         # use mapping between fd names and modules to concatenate scripts
+        for mod in fm_lst:
+            with open(self.modules[mod], 'r') as mod_file:
+                script_str += mod_file.read()
 
+        return script_str
 
     def collect_modules(self, options):
         deps = []
@@ -146,9 +145,11 @@ class Argument:
         opt_args = {}
 
         for k in options.keys():
-            fd_helper(k, deps, added, opts)
-            if not isinstance(options[k], str) and not isinstance(options[k], bool):
-                opt_args[k] = options[k]
+            fd_helper(k, deps, added, options)
+            if isinstance(options[k], list):
+                opt_args[self.variables[k]] = self.convert_portlist(options[k])
+            if isinstance(options[k], int):
+                opt_args[self.variables[k]] = str(options[k])
 
         return (deps, opt_args)
 
@@ -173,6 +174,43 @@ class Argument:
             deps_lst.append(k)
             added_dict[k] = True
 
+    def convert_portlist(port_lst):
+        ret_str = "@("
+        for port, rng in port_lst:
+            ret_str += "[PSCustomObject]@{ PORT = " + port +"; RANGE = " + rng + "},"
+        ret_str = ret_str[:-1] + ")"
+        return ret_str
+
+    def convert_targets(host_lst):
+        # just a list of targets, as specified in CLI
+        # have to join and then split, bc args are split on spaces
+        #
+        # we will not support ranged ips: 192.168.0-255.1-255
+        # domain names must not have slashes: slashes are only used to designate subnets
+        val_lst = "".join(host_lst).split(',')
+        ret_str = "@("
+        for host in val_lst:
+            if '/' in host:
+                # get subnet size
+                host_name,subn = host.split("/")
+
+                ret_str += "[PSCustomObject]@{ BASE_HOST = " + host_name + "; SUBN = " + subn + "; RESOLV = "
+                if host_name.replace(".", "").isnumeric():
+                    ret_str += "$false },"
+                else:
+                    ret_str += "$true },"
+            else:
+                ret_str += "[PSCustomObject]@{ BASE_HOST = " + host + "; SUBN = 32; RESOLV = "
+                if host.replace(".", "").isnumeric():
+                    ret_str += "$false },"
+                else:
+                    ret_str += "$true },"
+
+        ret_str = ret_str[:-1] + ")"
+
+        return ret_str
+
+
 
 class RequestHandler(BaseHTTPRequestHandler):
     def __init___(self):
@@ -188,19 +226,19 @@ class RequestHandler(BaseHTTPRequestHandler):
             self.send_response(404)
             self.send_header('Content-type', 'text/plain')
             self.end_headers()
-            self.wfile.write("no args\n")
+            self.wfile.write(b"no args\n")
         else:
             query_str = decode(query_components['args'])
             if len(query_str) > 0:
                 self.send_response(200)
                 self.send_header('Content-type', 'text/plain')
                 self.end_headers()
-                self.wfile.write(encode(collect_script(query_str)))
+                self.wfile.write(encode(self.collect_script(query_str)).encode())
             else:
                 self.send_response(404)
                 self.send_header('Content-type', 'text/plain')
                 self.end_headers()
-                self.wfile.write("no args\n")
+                self.wfile.write(b"no args\n")
 
 
 def run_server(server_class=HTTPServer, handler_class=RequestHandler, port=8000):
