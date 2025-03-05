@@ -7,7 +7,7 @@
 
 ## Functionality 
 - [ ] Port scanning
-- [ ] Host discovery
+- [x] Host discovery
 
 ## Setup
 **1.** Run PowerShell as administrator
