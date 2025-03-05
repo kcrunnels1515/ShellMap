@@ -48,7 +48,9 @@ class Argument:
         # map between modules and list of modules they depend on
         self.dependencies = dict()
         # map between modules and the variables they need to have set
-        self.variables = dict()
+        self.get_vars = dict()
+        # map between modules and the variables they set
+        self.set_vars = dict()
         # declare parser with custom argument parsing options
         self.parser = OptionParser(option_class=co.ShellMapOption)
         self.load_parser_rules()
@@ -58,7 +60,7 @@ class Argument:
 
     def load_parser_rules(self):
         # options that add data
-        self.parser.add_option("-p", action="store", type="port_list", dest="ports")
+        self.parser.add_option("--p", action="store", type="port_list", dest="ports")
         self.parser.add_option("--PS", action="store", type="port_list", dest="ports_syn")
         self.parser.add_option("--PA", action="store", type="port_list", dest="ports_ack")
         self.parser.add_option("--PU", action="store", type="port_list", dest="ports_udp")
@@ -73,12 +75,12 @@ class Argument:
         self.parser.add_option("--PE", action="store_true", dest="icmp_echo", default=False)
         self.parser.add_option("--PP", action="store_true", dest="icmp_timestamp", default=False)
         self.parser.add_option("--PM", action="store_true", dest="icmp_netmasq", default=False)
-        self.parser.add_option("-n", action="store_false", dest="resolve", default=True)
+        self.parser.add_option("--n", action="store_false", dest="resolve", default=True)
         self.parser.add_option("--sU", action="store_true", dest="port_udp_default", default=False)
-        self.parser.add_option("-F", action="store_true", dest="limit_ports", default=False)
-        self.parser.add_option("-r", action="store_false", dest="randomize_ports", default=True)
+        self.parser.add_option("--F", action="store_true", dest="limit_ports", default=False)
+        self.parser.add_option("--r", action="store_false", dest="randomize_ports", default=True)
         self.parser.add_option("--sV", action="store_true", dest="service_version", default=False)
-        self.parser.add_option("-O", action="store_true", dest="os_detect", default=False)
+        self.parser.add_option("--O", action="store_true", dest="os_detect", default=False)
 
         # options that store a string as their value are maps to a functional module
         # ex: these tell the fd determiner that it should add a particular module
@@ -91,40 +93,51 @@ class Argument:
         with open('module_deps.txt', 'r') as deps:
             # reads a dependency file line by line
             # each line is of the format:
-            #   A B C [| VARIABLE]
+            #   A,B,C > [PROVIDED VARIABLE] < [REQUIRED VARIABLE1,[REQUIRED VARIABLE2, ...]]
             # where A is a module, and B and C are modules that A
-            # depends on, and the optional VARIABLE is a global variable that
-            # A will set
-            # for example, setting a port list will require functionality AND data accessible
+            # depends on
+            # PROVIDED VARIABLE is optional, provided if module A populates a variable
+            # REQUIRED VARIABLES are optional, provided if module A requires the variables
+            #
+            # If a module does not use or set variables, the line would appear as:
+            # A B C ><
             mods = []
-            var = ""
             for line in deps:
-                if '|' in line:
-                    mods_n_var = line.split('|')
-                    mods = re.findall(r"[a-zA-Z0-9-_]+", mods_n_var[0])
-                    var = mods_n_var[1].strip()
-                else:
-                    mods = re.findall(r"[a-zA-Z0-9-_]+", line)
+                if '#' in line:
+                    continue
 
-                if len(mods) == 1:
+                (mods, write_var, read_vars) = re.split('>|<', line)
+                mod_lst = mods.split(',')
+
+                if len(mod_lst) == 1:
                     # no dependency
                     self.dependencies[mods[0]] = []
                 else:
                     # has dependency
                     self.dependencies[mods[0]] = mods[1:]
 
-                if len(var) > 0:
-                    self.variables[mods[0]] = var
+                # set variable names module needs to run
+                if len(read_vars) > 0:
+                    read_lst = read_vars.split(',')
+                    self.get_vars[mod_lst[0]] = read_lst
+
+                # set variable names that module populates
+                if len(write_var) > 0:
+                    self.set_vars[mod_lst[0]] = write_var
 
     def process_args(self, arg_str):
         # string to hold all of the required script text
         script_str = ""
         # collect options and arguments from parsing the input
         # args should just be a list of hosts
-        (options, args) = self.parser.parse_args(arg_str.split(' '))
+        santi_args = self.sanitize_args(" " + arg_str).split(' ')
+        #print(santi_args)
+        (tmp_options, args) = self.parser.parse_args(santi_args)
         # interpret list of hosts as list of (host, subnet) pairs
         hosts = self.convert_targets(args)
-        opt_dict = ast.literal_eval(str(options))
+        tmp_opt_dict = ast.literal_eval(str(tmp_options))
+        # cleaned options, without false or Empty values
+        opt_dict = dict([(k, v) for k, v in tmp_opt_dict.items() if v not in [None, False]])
 
         # collect required functional modules, and arguments to those functional modules
         fm_lst, opt_args = self.collect_modules(opt_dict)
@@ -140,27 +153,44 @@ class Argument:
 
         return script_str
 
+    def collect_variables(self, option_args, deps):
+        for d in deps:
+            pass
+
+    def sanitize_args(self, arg_str):
+        pat = re.compile(r"(?<=([^-\S]))-[^-]")
+        pos = 0
+        running_pos = 0
+        short_args = []
+        manip = list(arg_str)
+
+        while m:= pat.search(arg_str, pos):
+            pos = m.start() + 1
+            short_args.append(m.span())
+
+        for fst, snd in short_args:
+            manip.insert(fst+running_pos, '-')
+            running_pos += 1
+        return ''.join(manip)
+
     def collect_modules(self, options):
         deps = []
         added = dict.fromkeys(self.dependencies.keys(), False)
         opt_args = {}
         #breakpoint()
         for k in options.keys():
-            if options[k] is not None:
-                self.fd_helper(k, deps, added, options)
+            #print(f"Checking option {k}")
+            #print(opt_args)
+            self.fd_helper(k, deps, added, options)
+            if not isinstance(options[k], bool):
                 if isinstance(options[k], list):
-                    opt_args[self.variables[k]] = self.convert_portlist(options[k])
+                    opt_args[self.set_vars[k]] = self.convert_portlist(options[k])
                 elif isinstance(options[k], int):
-                    opt_args[self.variables[k]] = str(options[k])
+                    opt_args[self.set_vars[k]] = str(options[k])
 
         return (deps, opt_args)
 
     def fd_helper(self, k, dep_lst, added_dict, opts):
-        #breakpoint()
-        if opts[k] is None:
-            return
-        if opts[k] == False:
-            return
         # if option holds a string, set the key to that string
         if isinstance(opts[k], str):
             k = opts[k]
@@ -168,8 +198,7 @@ class Argument:
         if added_dict[k]:
             return
 
-        # if a functional module has no dependencies, check that
-        # it isn't already added and is it isn't, add it
+        # if a functional module has no dependencies add it
         if (len(self.dependencies[k]) == 0):
             dep_lst.append(k)
             added_dict[k] = True
