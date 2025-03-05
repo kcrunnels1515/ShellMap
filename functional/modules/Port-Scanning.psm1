@@ -15,57 +15,89 @@ Import-Module $PSScriptRoot\SubNet-Calculate.psm1
 
 function Write-PortScanning([ipaddress]$resolvedIP, [int]$subNet)
 {
-    # Use host discovery to get the subnet + the active IPs!! (THIS ALSO DEPENDS ON THE FLAG SET, BUT THIS IS DEFAULT)
-    # NOTE: Could add a flag that changes to check ALL hosts since "inactive" doesn't necessarily = not port accessible
+    # Establish variables:
     $ipAddresses = Get-ActiveHosts $resolvedIP $subNet
+    $ports = @(80, 23, 443, 21, 22, 25) # To be updated if ports are specified! (top 5 default)
+    $jobs = @() # Job array to hold all jobs (parallel threads)
 
-    # Establish a table to hold all the outputs: PORT, STATE, SERVICE 
-    # Store the output from the actual host discovery process in data structure to pull from later and output to user:
-    # HashTable -> Key = Ip/Subnet, Value = Array of objects () | Format-Table (allows output to be formatted)
-    $outputTable = @{}    
-    # Note: it is possible for host to be down but the port open since port check is separate (not whole system health)
+    # Port scanning script block (for usage in the jobs!!)
+    $portScriptBlock = {
+        param(
+            [string]$ipAddress,
+            [string]$port
+        )  
+        
+        $status = $false # Port starts at closed
 
-    # TCP Client Setup:
-    $ports = @(80, 443, 21, 22, 23)  # Replace with port (if input, can add to args later!)
-
-    $startTime = Get-Date
-    foreach($ipAddress in $ipAddresses) 
-    {
-        $open = $false # AUTO SET THE PORT TO CLOSED, ONLY UPDATE IF OPEN!
-        # Create a TCP client
-        $tcpClient = New-Object System.Net.Sockets.TcpClient
-
-        # Connect to the server using the IP address and specified port
-        foreach($port in $ports)
+        # Deciding service value based off top 10 ports:
+        # Reference: https://nmap.org/book/port-scanning.html#most-popular-ports
+        switch($port)
         {
-            # If the client connects to the port, this means the port is open AND listening:
-            $tcpClient.Connect($resolvedIP, $port)
-            if ($tcpClient.Connected) {
-                # This port is open! Mark as open!
-                $open = $true
-                # Close TCP Client!
-                $tcpClient.Close()
-            } else 
-            {
-                # The port isn't listening (though it responded) it is either closed or filtered! (don't update the open)
-                
-            }
-
-            # Check if ACK scan: UNFILTERED
-
-            $outputValues = [PSCustomObject]@{
-                port = $port
-                open = $open
-                portCheck = $portCheck
-                ackCheck = $ackCheck
-            }
+            80 {$service = "HTTP"}
+            23 {$service = "Telnet"}
+            443 {$service = "HTTPS"}
+            21 {$service = "FTP"}
+            22 {$service = "SSH"}
+            25 {$service = "HTTP"}
+            3389 {$service = "ms-team-server"}
+            110 {$service = "POP3"}
+            445 {$service = "Microsoft-DS"}
+            139 {$service = "NetBIOS-SSN"}
         }
         
+        $tcpClient = New-Object System.Net.Sockets.TcpClient
+        $tcpClient.Connect($ipAddress, $port) # Try to connect to the TCP Client (quiet errors)
+        if ($tcpClient.Connected) 
+        {
+            # Mark as open!
+            $status = "OPEN"
+            # Close TCP Client!
+            $tcpClient.Close()
+        } else 
+        {
+            # The port isn't listening, it is either filtered or closed: (continue)
+            $status = "CLOSED"
+        }
+
+        # Return the results of the port (PORT STATUS SERVICE)
+        return [PSCustomObject]@{
+            PORT = $port
+            STATUS = $status
+            SERVICE = $service
+        }
     }
-    $endTime = Get-Date
 
-    $elapsedTime = ($endTime - $startTime)  
-    $elapsedMs = $elapsedTime.TotalMilliseconds  
+    # Timer:
+    $stopWatch = New-Object System.Diagnostics.Stopwatch
+    $stopWatch.Start();
 
-    Write-Output "ShellMap scanned in $elapsedMs ms" 
+    # Loop the ip addresses and then loop the ports for each specified ip:
+    foreach($ipAddress in $ipAddresses) 
+    {
+        # Connect to the server using the IP address and specified port
+        foreach($port in $ports)
+        { 
+            # Start the job using the portScriptBlock:
+            $job = Start-Job -ScriptBlock $portScriptBlock -ArgumentList $ipAddress, $port
+            $jobs += $job
+        }
+    }
+    # First wait on each job before collecting the info (this means the slowest job will delay output slightly):
+    foreach($job in $jobs)
+    {
+        Wait-Job -Job $job | Out-Null # Mute the actual thread info here!
+    }
+
+    # Receive for each job: and then reformat the output
+    $outputs = @()
+    foreach($job in $jobs) 
+    {
+        $output = Receive-Job -Job $job
+        $outputs += $output
+    }
+
+    # Format the output to be the table of actual port statuses:
+    $outputs | Format-Table -Property PORT, STATUS, SERVICE -AutoSize
+    $elapsedTime = $stopWatch.Elapsed.TotalMilliseconds
+    Write-Output "ShellMap scanned in $elapsedTime ms" 
 }

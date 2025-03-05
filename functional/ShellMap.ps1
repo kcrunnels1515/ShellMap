@@ -6,7 +6,7 @@ $startTime = Get-Date -Format "yyyy-MM-dd HH:mm"
 $timeZone = (Get-TimeZone).StandardName
 Write-Output "Starting ShellMap at $startTime $timeZone"
 
-$baseAddress = "google.com" # UPDATED WITH ARG INPUT
+$baseAddress = "scanme.nmap.org" # UPDATED WITH ARG INPUT (test = scanme.nmap.org)
 $subNet = 0 # ALSO UPDATE WITH ARGS!
 
 # Check if input is a hostname, resolve it to a ip address before continuing:
