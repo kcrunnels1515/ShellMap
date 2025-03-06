@@ -13,10 +13,10 @@ Import-Module $PSScriptRoot\SubNet-Calculate.psm1
 # Filtered = No response, and 
 # Unfiltered = 
 
-function Write-PortScanning([ipaddress]$resolvedIP, [int]$subNet)
+function Write-PortScanning([ipaddress]$resolvedIP)
 {
+    $ipAddress = Get-ActiveHosts $resolvedIP
     # Establish variables:
-    $ipAddresses = Get-ActiveHosts $resolvedIP $subNet
     $ports = @(80, 23, 443, 21, 22, 25) # To be updated if ports are specified! (top 5 default)
     $jobs = @() # Job array to hold all jobs (parallel threads)
 
@@ -70,17 +70,12 @@ function Write-PortScanning([ipaddress]$resolvedIP, [int]$subNet)
     # Timer:
     $stopWatch = New-Object System.Diagnostics.Stopwatch
     $stopWatch.Start();
-
-    # Loop the ip addresses and then loop the ports for each specified ip:
-    foreach($ipAddress in $ipAddresses) 
-    {
-        # Connect to the server using the IP address and specified port
-        foreach($port in $ports)
-        { 
-            # Start the job using the portScriptBlock:
-            $job = Start-Job -ScriptBlock $portScriptBlock -ArgumentList $ipAddress, $port
-            $jobs += $job
-        }
+    # Connect to the server using the IP address and specified port
+    foreach($port in $ports)
+    { 
+        # Start the job using the portScriptBlock:
+        $job = Start-Job -ScriptBlock $portScriptBlock -ArgumentList $ipAddress, $port
+        $jobs += $job
     }
     # First wait on each job before collecting the info (this means the slowest job will delay output slightly):
     foreach($job in $jobs)
