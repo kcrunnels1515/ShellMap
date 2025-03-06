@@ -7,7 +7,7 @@ $timeZone = (Get-TimeZone).StandardName
 Write-Output "Starting ShellMap at $startTime $timeZone"
 
 $baseAddress = "scanmap.nmap.org" # UPDATED WITH ARG INPUT (test = scanme.nmap.org)
-$subNet = 2 # ALSO UPDATE WITH ARGS!
+$subNet = 30 # ALSO UPDATE WITH ARGS!
 
 # Check if input is a hostname, resolve it to a ip address before continuing:
 # ONLY get the IPv4 (for the subnet calculator!)
@@ -27,7 +27,7 @@ if($subNet -eq 0)
 # Resolve the subnet using the process from SubNet-Calculate.psm1
 # TO ADD: Threading for each subnet check(parallel)
 # Switch statement to pick either host discovery or port scanning
-$maxPos = 1 -shl (32 - $subnet)
+$maxPos = 1 -shl (32 - $subNet)
 for ( $i = 0; $i -lt $maxPos; $i++) 
 {
     $ipAddress = Get-IPSubnet $resolvedIP $subNet $i
