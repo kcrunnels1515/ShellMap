@@ -6,6 +6,8 @@ Import-Module $PSScriptRoot\SubNet-Calculate.psm1
 # Output the successfully pinged ip addresses (hosts that are up)
 function Write-HostDiscovery([ipaddress]$ipAddress)
 {
+    Write-Output "Scanning IP $resolvedIP"
+
     $activeHosts = 0
     $activePrintCount = 0
     $numAddresses = $ipAddresses.Count
@@ -29,7 +31,7 @@ function Write-HostDiscovery([ipaddress]$ipAddress)
         }            
     } else 
     {
-        Write-Output "Not up."
+        Write-Output "Host $ipAddress appears to be down."
     }
     
     $endTime = Get-Date 
@@ -42,17 +44,15 @@ function Write-HostDiscovery([ipaddress]$ipAddress)
 }
 
 # Return IP's for all the active hosts (to be used in port scanning)
-function Get-ActiveHosts([ipaddress]$ipAddress)
+function Get-ActiveHost([ipaddress]$ipAddress)
 {
-    $activeHostIPs = @() # To hold output IP addresses
-
     # ICMP echo request (PING): with -Quiet to do basic ping (and count of 1 to send 1 ping packet)
     $pingCheck = Test-Connection $ipAddress -Quiet -Count 1
     # Add to the count of active hosts if the ping is TRUE:
     if($pingCheck)
     {
-        $activeHostIPs += $ipAddress
+        return $true
     }
 
-    return $activeHostIPs
+    return $false
 }

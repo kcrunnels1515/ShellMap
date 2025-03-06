@@ -14,8 +14,15 @@ Import-Module $PSScriptRoot\SubNet-Calculate.psm1
 # Unfiltered = 
 
 function Write-PortScanning([ipaddress]$resolvedIP)
-{
-    $ipAddress = Get-ActiveHosts $resolvedIP
+{    
+    Write-Output "Scanning IP $resolvedIP"
+
+    # Only scan if the host ip is active:
+    $activeHost = Get-ActiveHost $resolvedIP
+    if($activeHost -eq $false)
+    {
+        return
+    }
     # Establish variables:
     $ports = @(80, 23, 443, 21, 22, 25) # To be updated if ports are specified! (top 5 default)
     $jobs = @() # Job array to hold all jobs (parallel threads)
@@ -55,6 +62,7 @@ function Write-PortScanning([ipaddress]$resolvedIP)
             $tcpClient.Close()
         } else 
         {
+            # Check the return error:
             # The port isn't listening, it is either filtered or closed: (continue)
             $status = "CLOSED"
         }
