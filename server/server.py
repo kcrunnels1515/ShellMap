@@ -51,6 +51,8 @@ class Argument:
         self.get_vars = dict()
         # map between modules and the variables they set
         self.set_vars = dict()
+        # map between variables and default values
+        self.def_vars = dict()
         # declare parser with custom argument parsing options
         self.parser = OptionParser(option_class=co.ShellMapOption)
         self.load_parser_rules()
@@ -102,28 +104,36 @@ class Argument:
             # If a module does not use or set variables, the line would appear as:
             # A B C ><
             mods = []
+            var_decls = True
             for line in deps:
+                if line == "===":
+                    var_decls = False
+                    continue
                 if '#' in line:
                     continue
-
-                (mods, write_var, read_vars) = re.split('>|<', line)
-                mod_lst = mods.split(',')
-
-                if len(mod_lst) == 1:
-                    # no dependency
-                    self.dependencies[mods[0]] = []
+                if var_decls:
+                    (var_name,val) = line.split('=')
+                    val = val.strip('"')
+                    self.def_vars[var_name] = val
                 else:
-                    # has dependency
-                    self.dependencies[mods[0]] = mods[1:]
+                    (mods, write_var, read_vars) = re.split('>|<', line)
+                    mod_lst = mods.split(',')
 
-                # set variable names module needs to run
-                if len(read_vars) > 0:
-                    read_lst = read_vars.split(',')
-                    self.get_vars[mod_lst[0]] = read_lst
+                    if len(mod_lst) == 1:
+                        # no dependency
+                        self.dependencies[mods[0]] = []
+                    else:
+                        # has dependency
+                        self.dependencies[mods[0]] = mods[1:]
 
-                # set variable names that module populates
-                if len(write_var) > 0:
-                    self.set_vars[mod_lst[0]] = write_var
+                    # set variable names module needs to run
+                    if len(read_vars) > 0:
+                        read_lst = read_vars.split(',')
+                        self.get_vars[mod_lst[0]] = read_lst
+
+                    # set variable names that module populates
+                    if len(write_var) > 0:
+                        self.set_vars[mod_lst[0]] = write_var
 
     def process_args(self, arg_str):
         # string to hold all of the required script text

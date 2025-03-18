@@ -1,3 +1,11 @@
+#
+# variable declarations:
+# VARNAME="DEFAULT VALUE"
+#
+# variable declarations/module dependencies delimitated by
+# line containing only
+#    ===
+#
 # each line is of the format:
 #   A,B,C > [PROVIDED VARIABLE] < [REQUIRED VARIABLE1,[REQUIRED VARIABLE2, ...]]
 # where A is a module, and B and C are modules that A
@@ -8,6 +16,15 @@
 # If a module does not use or set variables, the line would appear as:
 # A,B,C><
 # DO NOT INCLUDE SPACES OR EMPTY LINES
+PORTS=""
+PORTS_ACK=""
+PORTS_SYN=""
+PORTS_UDP=""
+PORTS_SCTP=""
+EXCL_PORTS=""
+TOP_PORTS="[int]20"
+HOSTS=""
+===
 ports>PORTS<
 ports_ack>PORTS_ACK<
 ports_syn>PORTS_SYN<
