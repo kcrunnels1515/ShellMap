@@ -11,7 +11,7 @@ Import-Module $PSScriptRoot\SubNet-Calculate.psm1
 # Open = application is responding to TCP (or UDP) ** Primary goal of port scanning
 # Closed = application is responding to TCP (or UDP) BUT, it is not listening (no service active)
 # Filtered = No response, and 
-# Unfiltered = 
+# Unfiltered = Not possible
 
 function Write-PortScanning([ipaddress]$resolvedIP)
 {    
@@ -23,6 +23,7 @@ function Write-PortScanning([ipaddress]$resolvedIP)
     {
         return
     }
+
     # Establish variables:
     $ports = @(80, 23, 443, 21, 22, 25) # To be updated if ports are specified! (top 5 default)
     $jobs = @() # Job array to hold all jobs (parallel threads)
@@ -52,21 +53,30 @@ function Write-PortScanning([ipaddress]$resolvedIP)
             139 {$service = "NetBIOS-SSN"}
         }
         
-        $tcpClient = New-Object System.Net.Sockets.TcpClient
-        $tcpClient.Connect($ipAddress, $port) # Try to connect to the TCP Client (quiet errors)
-        if ($tcpClient.Connected) 
+        # Try-catch block: if catch, 
+        try 
         {
-            # Mark as open!
-            $status = "OPEN"
+            $tcpClient = New-Object System.Net.Sockets.TcpClient
+            $tcpClient.Connect($ipAddress, $port) # Try to connect to the TCP Client (quiet errors)
+            if ($tcpClient.Connected) 
+            {
+                # Mark as open!
+                $status = "OPEN"
+
+            } else 
+            {
+                # The port isn't listening, it is either filtered or closed: 
+                $status = "CLOSED/FILTERED"
+                
+            }
             # Close TCP Client!
             $tcpClient.Close()
-        } else 
-        {
-            # Check the return error:
-            # The port isn't listening, it is either filtered or closed: (continue)
+        }
+        catch # If the catch is activated, then this port is unreachable closed and NOT filtered
+        { 
             $status = "CLOSED"
         }
-
+        
         # Return the results of the port (PORT STATUS SERVICE)
         return [PSCustomObject]@{
             PORT = $port
@@ -82,14 +92,10 @@ function Write-PortScanning([ipaddress]$resolvedIP)
     foreach($port in $ports)
     { 
         # Start the job using the portScriptBlock:
-        $job = Start-Job -ScriptBlock $portScriptBlock -ArgumentList $ipAddress, $port
-        $jobs += $job
+        $jobs += Start-Job -ScriptBlock $portScriptBlock -ArgumentList $ipAddress, $port
     }
     # First wait on each job before collecting the info (this means the slowest job will delay output slightly):
-    foreach($job in $jobs)
-    {
-        Wait-Job -Job $job | Out-Null # Mute the actual thread info here!
-    }
+    Wait-Job -Job $jobs | Out-Null # Mute the actual thread info here!
 
     # Receive for each job: and then reformat the output
     $outputs = @()

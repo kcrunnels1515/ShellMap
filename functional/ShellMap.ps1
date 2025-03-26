@@ -23,7 +23,6 @@ if($subNet -eq 0)
     Write-Output "ShellMap scan report for $resolvedIP/$subNet"
 }
 
-
 # Resolve the subnet using the process from SubNet-Calculate.psm1
 # TO ADD: Threading for each subnet check(parallel)
 # Switch statement to pick either host discovery or port scanning
