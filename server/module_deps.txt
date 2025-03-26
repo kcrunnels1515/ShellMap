@@ -16,14 +16,21 @@
 # If a module does not use or set variables, the line would appear as:
 # A,B,C><
 # DO NOT INCLUDE SPACES OR EMPTY LINES
-PORTS=""
-PORTS_ACK=""
-PORTS_SYN=""
-PORTS_UDP=""
-PORTS_SCTP=""
-EXCL_PORTS=""
+# 
+# mod deps/mod exclusion is delimitated by
+#   +++
+# each mod exclusion line is of the format
+#   mod1|mod2
+# where mod1 and mod2 cannot be enabled at once
+# 
+PORTS="@([PSCustomObject]@{ PORT = 80; RANGE = 0},[PSCustomObject]@{ PORT = 67; RANGE = 23},[PSCustomObject]@{ PORT = 56; RANGE = 0})"
+PORTS_ACK="@([PSCustomObject]@{ PORT = 80; RANGE = 0},[PSCustomObject]@{ PORT = 67; RANGE = 23},[PSCustomObject]@{ PORT = 56; RANGE = 0})"
+PORTS_SYN="@([PSCustomObject]@{ PORT = 80; RANGE = 0},[PSCustomObject]@{ PORT = 67; RANGE = 23},[PSCustomObject]@{ PORT = 56; RANGE = 0})"
+PORTS_UDP="@([PSCustomObject]@{ PORT = 80; RANGE = 0},[PSCustomObject]@{ PORT = 67; RANGE = 23},[PSCustomObject]@{ PORT = 56; RANGE = 0})"
+PORTS_SCTP="@([PSCustomObject]@{ PORT = 80; RANGE = 0},[PSCustomObject]@{ PORT = 67; RANGE = 23},[PSCustomObject]@{ PORT = 56; RANGE = 0})"
+EXCL_PORTS="@([PSCustomObject]@{ PORT = 80; RANGE = 0},[PSCustomObject]@{ PORT = 67; RANGE = 23},[PSCustomObject]@{ PORT = 56; RANGE = 0})"
 TOP_PORTS="[int]20"
-HOSTS=""
+HOSTS="@([PSCustomObject]@{ BASE_HOST = "127.0.0.1"; SUBN = 32; RESOLV = $false })"
 ===
 ports>PORTS<
 ports_ack>PORTS_ACK<
@@ -47,3 +54,5 @@ os_detect><HOSTS
 port_syn_scan><HOSTS
 port_con_scan><HOSTS
 port_ack_scan><HOSTS
++++
+ports^top_ports

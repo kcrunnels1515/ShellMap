@@ -1,4 +1,5 @@
 # import all functions from http.server module
+import traceback
 import ast
 from enum import Enum
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -53,6 +54,8 @@ class Argument:
         self.set_vars = dict()
         # map between variables and default values
         self.def_vars = dict()
+        # map between modules and the modules they conflict with
+        self.conflicts = dict()
         # declare parser with custom argument parsing options
         self.parser = OptionParser(option_class=co.ShellMapOption)
         self.load_parser_rules()
@@ -104,68 +107,100 @@ class Argument:
             # If a module does not use or set variables, the line would appear as:
             # A B C ><
             mods = []
-            var_decls = True
+            section = 0
             for line in deps:
-                if line == "===":
-                    var_decls = False
-                    continue
+                line = line.strip()
+
                 if '#' in line:
                     continue
-                if var_decls:
-                    (var_name,val) = line.split('=')
-                    val = val.strip('"')
-                    self.def_vars[var_name] = val
-                else:
-                    (mods, write_var, read_vars) = re.split('>|<', line)
-                    mod_lst = mods.split(',')
 
-                    if len(mod_lst) == 1:
-                        # no dependency
-                        self.dependencies[mods[0]] = []
-                    else:
-                        # has dependency
-                        self.dependencies[mods[0]] = mods[1:]
+                if line == "===":
+                    section = 1
+                    continue
+                if line == "+++":
+                    section = 2
+                    continue
 
-                    # set variable names module needs to run
-                    if len(read_vars) > 0:
-                        read_lst = read_vars.split(',')
-                        self.get_vars[mod_lst[0]] = read_lst
+                #breakpoint()
+                match section:
+                    case 0:
+                        (var_name,val) = line.split('=', 1)
+                        val = val.strip('"')
+                        self.def_vars[var_name] = val
+                    case 1:
+                        #breakpoint()
+                        (mods, write_var, read_vars) = re.split('>|<', line)
+                        mod_lst = mods.split(',')
 
-                    # set variable names that module populates
-                    if len(write_var) > 0:
-                        self.set_vars[mod_lst[0]] = write_var
+                        if len(mod_lst) == 1:
+                            # no dependency
+                            self.dependencies[mod_lst[0]] = []
+                        else:
+                            # has dependency
+                            self.dependencies[mod_lst[0]] = mod_lst[1:]
+
+                        # set variable names module needs to run
+                        if len(read_vars) > 0:
+                            read_lst = read_vars.split(',')
+                            self.get_vars[mod_lst[0]] = read_lst
+                        else:
+                            self.get_vars[mod_lst[0]] = []
+
+                        # set variable names that module populates
+                        if len(write_var) > 0:
+                            self.set_vars[mod_lst[0]] = write_var
+                        else:
+                            self.set_vars[mod_lst[0]] = ""
+                    case 2:
+                        (mod1, mod2) = line.split('^')
+                        if mod1 in self.conflicts:
+                            self.conflicts[mod1].append(mod2)
+                        else:
+                            self.conflicts[mod1] = [mod2]
+                        if mod2 in self.conflicts:
+                            self.conflicts[mod2].append(mod1)
+                        else:
+                            self.conflicts[mod2] = [mod1]
+                    case _:
+                        raise Exception('Something strange happened parsing modular deps')
 
     def process_args(self, arg_str):
         # string to hold all of the required script text
         script_str = ""
-        # collect options and arguments from parsing the input
-        # args should just be a list of hosts
-        santi_args = self.sanitize_args(" " + arg_str).split(' ')
-        #print(santi_args)
-        (tmp_options, args) = self.parser.parse_args(santi_args)
-        # interpret list of hosts as list of (host, subnet) pairs
-        hosts = self.convert_targets(args)
-        tmp_opt_dict = ast.literal_eval(str(tmp_options))
-        # cleaned options, without false or Empty values
-        opt_dict = dict([(k, v) for k, v in tmp_opt_dict.items() if v not in [None, False]])
+        # a general try-catch that will detect errors and return an error message
+        try:
+            # collect options and arguments from parsing the input
+            # args should just be a list of hosts
+            santi_args = self.sanitize_args(" " + arg_str).split(' ')
+            #print(santi_args)
+            try:
+                (tmp_options, args) = self.parser.parse_args(santi_args)
+            except:
+                raise Exception("Could not understand your arguments")
+            # interpret list of hosts as list of (host, subnet) pairs
+            try:
+                hosts = self.convert_targets(args)
+            except:
+                raise Exception("Could not understand your host descriptions")
+            tmp_opt_dict = ast.literal_eval(str(tmp_options))
+            # cleaned options, without false or Empty values
+            opt_dict = dict([(k, v) for k, v in tmp_opt_dict.items() if v not in [None, False]])
 
-        # collect required functional modules, and arguments to those functional modules
-        fm_lst, opt_args = self.collect_modules(opt_dict)
-        #breakpoint()
-        # add option arguments and target specs to beginning as global variables
-        for k, v in opt_args.items():
-            script_str += f"${k.upper()} = {v}\n"
+            # collect required functional modules, and arguments to those functional modules
+            fm_lst, opt_args = self.collect_modules(opt_dict, hosts)
+            #breakpoint()
+            # add option arguments and target specs to beginning as global variables
+            for k, v in opt_args.items():
+                script_str += f"${k.upper()} = {v}\n"
 
-        # use mapping between fd names and modules to concatenate scripts
-        for mod in fm_lst:
-            with open(self.modules[mod], 'r') as mod_file:
-                script_str += mod_file.read() + "\n"
-
+            # use mapping between fd names and modules to concatenate scripts
+            for mod in fm_lst:
+                with open(self.modules[mod], 'r') as mod_file:
+                    script_str += mod_file.read() + "\n"
+        except Exception as e:
+            print(traceback.format_exc())
+            script_str = f"Write-Host \"Encountered error processing: {e}\""
         return script_str
-
-    def collect_variables(self, option_args, deps):
-        for d in deps:
-            pass
 
     def sanitize_args(self, arg_str):
         pat = re.compile(r"(?<=([^-\S]))-[^-]")
@@ -183,7 +218,7 @@ class Argument:
             running_pos += 1
         return ''.join(manip)
 
-    def collect_modules(self, options):
+    def collect_modules(self, options, hosts):
         deps = []
         added = dict.fromkeys(self.dependencies.keys(), False)
         opt_args = {}
@@ -198,7 +233,25 @@ class Argument:
                 elif isinstance(options[k], int):
                     opt_args[self.set_vars[k]] = str(options[k])
 
-        return (deps, opt_args)
+        # append HOSTS variable to opt_args
+        if len(hosts) > 0:
+            opt_args['HOSTS'] = hosts
+
+        # set of variables that are set in arguments
+        arg_vars = set(opt_args)
+
+        # set of variables required by enabled modules
+        needed_vars = set()
+        for dep in deps:
+            needed_vars.update(self.get_vars[dep])
+
+        # construct a dict of variable-value pairs where
+        # the value is used from the arguments if the variable
+        # name is in the set of argument-provided variables
+        # otherwise, pulls the value from the dict of default values
+        full_var_args = dict([ (v, opt_args[v]) if v in arg_vars else (v, self.def_vars[v]) for v in needed_vars ])
+
+        return (deps, full_var_args)
 
     def fd_helper(self, k, dep_lst, added_dict, opts):
         # if option holds a string, set the key to that string
@@ -207,6 +260,11 @@ class Argument:
 
         if added_dict[k]:
             return
+
+        if k in self.conflicts:
+            for conf_mod in self.conflicts[k]:
+                if conf_mod in dep_lst:
+                    raise Exception(f"Cannot use module {k} with module {conf_mod} enabled")
 
         # if a functional module has no dependencies add it
         if (len(self.dependencies[k]) == 0):
@@ -233,6 +291,16 @@ class Argument:
         #
         # we will not support ranged ips: 192.168.0-255.1-255
         # domain names must not have slashes: slashes are only used to designate subnets
+        #
+        # Ensure that host list was passed in
+        empty_hosts = True
+        for h in host_lst:
+            if len(h) > 0:
+                empty_hosts = False
+                break
+        if empty_hosts:
+            return ""
+
         val_lst = "".join(host_lst).split(',')
         ret_str = "@("
         for host in val_lst:
@@ -240,7 +308,7 @@ class Argument:
                 # get subnet size
                 host_name,subn = host.split("/")
 
-                ret_str += "[PSCustomObject]@{ BASE_HOST = " + host_name + "; SUBN = " + subn + "; RESOLV = "
+                ret_str += "[PSCustomObject]@{ BASE_HOST = \"" + host_name + "\"; SUBN = " + subn + "; RESOLV = "
                 if host_name.replace(".", "").isnumeric():
                     ret_str += "$false },"
                 else:
