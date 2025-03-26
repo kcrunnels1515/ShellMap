@@ -6,7 +6,7 @@
 
 
 ## Functionality 
-- [ ] Port scanning
+- [x] Port scanning
 - [x] Host discovery
 
 ## Setup
