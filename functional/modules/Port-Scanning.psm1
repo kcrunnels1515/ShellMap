@@ -1,17 +1,11 @@
 Import-Module $PSScriptRoot\SubNet-Calculate.psm1
 
-# Overview/Concept: 
-# FIRST: Establish what hosts are even available (host discovery) (ensure efficiency)
-# Then connect to ports on those:
-# Use a TCP cliet (dot net TCP) to send a handshake to a port (SYN) 
-# SYN/ACK: The target responds with a SYN/ACK packet if the port is open. 
-# RST: If the port is closed, the target responds with a RST packet. 
-# No response: If no response is received, the port is considered filtered. 
-# Basic scan (unspecified ports will scan all 65535 ports or 80, 443, 21, 22, 23) UNDECIDED
+# Concept: 
+# Perform host discovery, only try and connect to active hosts from the ip list.
 # Open = application is responding to TCP (or UDP) ** Primary goal of port scanning
 # Closed = application is responding to TCP (or UDP) BUT, it is not listening (no service active)
-# Filtered = No response, and 
-# Unfiltered = Not possible
+# Filtered = No response from ACK, (timeout).
+# Unfiltered = Not possible without admin permissions.
 
 function Write-PortScanning([ipaddress]$resolvedIP)
 {    
@@ -25,7 +19,8 @@ function Write-PortScanning([ipaddress]$resolvedIP)
     }
 
     # Establish variables:
-    $ports = @(80, 23, 443, 21, 22, 25) # To be updated if ports are specified! (top 5 default)
+    #$ports = @(22, 25, 80, 135, 139, 445) # To be updated if ports are specified! (top 5 default)
+    $ports = @(21, 25, 53, 80, 110, 111, 135, 139, 143, 443, 445, 465, 587, 993, 3306) # To be updated if ports are specified! (top 5 default)
     $jobs = @() # Job array to hold all jobs (parallel threads)
 
     # Port scanning script block (for usage in the jobs!!)
@@ -37,45 +32,56 @@ function Write-PortScanning([ipaddress]$resolvedIP)
         
         $status = $false # Port starts at closed
 
-        # Deciding service value based off top 10 ports:
+        # Deciding service value based off top 10+ ports and scan practices:
         # Reference: https://nmap.org/book/port-scanning.html#most-popular-ports
         switch($port)
         {
-            80 {$service = "HTTP"}
-            23 {$service = "Telnet"}
-            443 {$service = "HTTPS"}
-            21 {$service = "FTP"}
-            22 {$service = "SSH"}
-            25 {$service = "HTTP"}
+            21 {$service = "ftp"}
+            22 {$service = "ssh"}
+            23 {$service = "telnet"}
+            25 {$service = "smtp"}
+            53 {$service = "domain"}
+            80 {$service = "http"}
+            110 {$service = "pop3"}
+            111 {$service = "rpcbind"}
+            135 {$service = "msrpc"}
+            139 {$service = "netbios-ssn"}
+            143 {$service = "imap"}
+            443 {$service = "https"}
+            445 {$service = "microsoft-ds"}
+            465 {$service = "smtps"}
+            587 {$service = "submission"}
+            993 {$service = "imaps"}
+            995 {$service = "pop3s"}
+            3306 {$service = "mysql"}
             3389 {$service = "ms-team-server"}
-            110 {$service = "POP3"}
-            445 {$service = "Microsoft-DS"}
-            139 {$service = "NetBIOS-SSN"}
+            9929 {$service = "nping-echo"}
+            31337 {$service = "Elite"}
         }
         
-        # Try-catch block: if catch, 
+        # TCP does a 3-way handshake: client -> SYN to server. server -> SYN + ACK to client. client -> ACK to server
+        $tcpClient = New-Object System.Net.Sockets.TcpClient
+        # Try-catch block for determining the port status: 
         try 
         {
-            $tcpClient = New-Object System.Net.Sockets.TcpClient
-            $tcpClient.Connect($ipAddress, $port) # Try to connect to the TCP Client (quiet errors)
-            if ($tcpClient.Connected) 
-            {
-                # Mark as open!
-                $status = "OPEN"
-
-            } else 
-            {
-                # The port isn't listening, it is either filtered or closed: 
-                $status = "CLOSED/FILTERED"
-                
-            }
-            # Close TCP Client!
-            $tcpClient.Close()
+            $tcpClient.Connect($ipAddress, $port) # Try to connect to the TCP Client 
+            # Success: actively listening for connections: OPEN
+            $status = "OPEN"
         }
-        catch # If the catch is activated, then this port is unreachable closed and NOT filtered
+        catch # If an exception occurs
         { 
-            $status = "CLOSED"
+            # Active rejection or no listener = CLOSED & timeout = FILTERED: so check for blocked exception message
+            if ($_.Exception.Message -match "actively refused")
+            { 
+                $status = "CLOSED"
+            }
+            else # Cannot be determined (either timeout or failed to respond after sending: FILTERED)
+            {
+                $status = "FILTERED"
+            }
         }
+        # Close TCP Client!
+        $tcpClient.Close()
         
         # Return the results of the port (PORT STATUS SERVICE)
         return [PSCustomObject]@{
