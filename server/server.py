@@ -81,7 +81,6 @@ class Argument:
         self.parser.add_option("--PP", action="store_true", dest="icmp_timestamp", default=False)
         self.parser.add_option("--PM", action="store_true", dest="icmp_netmasq", default=False)
         self.parser.add_option("--n", action="store_false", dest="resolve", default=True)
-        self.parser.add_option("--sU", action="store_true", dest="port_udp_default", default=False)
         self.parser.add_option("--F", action="store_true", dest="limit_ports", default=False)
         self.parser.add_option("--r", action="store_false", dest="randomize_ports", default=True)
         self.parser.add_option("--sV", action="store_true", dest="service_version", default=False)
@@ -92,6 +91,7 @@ class Argument:
         self.parser.add_option("--sS", action="store_const", const="port_syn_scan", dest="port_default_scan", default="port_syn_scan")
         self.parser.add_option("--sT", action="store_const", const="port_con_scan", dest="port_default_scan", default="port_syn_scan")
         self.parser.add_option("--sA", action="store_const", const="port_ack_scan", dest="port_default_scan", default="port_syn_scan")
+        self.parser.add_option("--sU", action="store_const", const="port_udp_scan", dest="port_default_scan", default="port_syn_scan")
 
     def load_dependencies(self):
         #breakpoint()
@@ -189,14 +189,15 @@ class Argument:
             # collect required functional modules, and arguments to those functional modules
             fm_lst, opt_args = self.collect_modules(opt_dict, hosts)
             #breakpoint()
-            # add option arguments and target specs to beginning as global variables
-            for k, v in opt_args.items():
-                script_str += f"${k.upper()} = {v}\n"
-
             # use mapping between fd names and modules to concatenate scripts
             for mod in fm_lst:
                 with open(self.modules[mod], 'r') as mod_file:
                     script_str += mod_file.read() + "\n"
+
+            # add option arguments and target specs to beginning as global variables
+            # these are added afterwards to that functions can be retreived as variables
+            for k, v in opt_args.items():
+                script_str += f"${k.upper()} = {v}\n"
         except Exception as e:
             print(traceback.format_exc())
             script_str = f"Write-Host \"Encountered error processing: {e}\""
@@ -232,11 +233,13 @@ class Argument:
                     opt_args[self.set_vars[k]] = self.convert_portlist(options[k])
                 elif isinstance(options[k], int):
                     opt_args[self.set_vars[k]] = str(options[k])
+                elif isinstance(options[k], str):
+                    opt_args[self.set_vars[k]] = f"Get-Item -Path 'Function:\\{options[k]}'"
 
         # append HOSTS variable to opt_args
         if len(hosts) > 0:
             opt_args['HOSTS'] = hosts
-
+        #breakpoint()
         # set of variables that are set in arguments
         arg_vars = set(opt_args)
 
@@ -254,9 +257,12 @@ class Argument:
         return (deps, full_var_args)
 
     def fd_helper(self, k, dep_lst, added_dict, opts):
-        # if option holds a string, set the key to that string
-        if isinstance(opts[k], str):
-            k = opts[k]
+        # some modules may not be present in options
+        if k in opts:
+            # if option holds a string, set the key to that string
+            if isinstance(opts[k], str):
+                #k = opts[k]
+                self.fd_helper(opts[k], dep_lst, added_dict, opts)
 
         if added_dict[k]:
             return
@@ -274,8 +280,8 @@ class Argument:
         # the dependencies and then add the initial module
         else:
             for dep in self.dependencies[k]:
-                self.fd_helper(dep, dep_lst, added_dict)
-            deps_lst.append(k)
+                self.fd_helper(dep, dep_lst, added_dict, opts)
+            dep_lst.append(k)
             added_dict[k] = True
 
     def convert_portlist(self, port_lst):

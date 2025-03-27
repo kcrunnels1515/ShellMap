@@ -31,28 +31,30 @@ PORTS_SCTP="@([PSCustomObject]@{ PORT = 80; RANGE = 0},[PSCustomObject]@{ PORT =
 EXCL_PORTS="@([PSCustomObject]@{ PORT = 80; RANGE = 0},[PSCustomObject]@{ PORT = 67; RANGE = 23},[PSCustomObject]@{ PORT = 56; RANGE = 0})"
 TOP_PORTS="[int]20"
 HOSTS="@([PSCustomObject]@{ BASE_HOST = "127.0.0.1"; SUBN = 32; RESOLV = $false })"
+DEFAULT_SCAN = "Get-Item -Path 'Function:\port_syn_scan'"
 ===
-ports>PORTS<
-ports_ack>PORTS_ACK<
-ports_syn>PORTS_SYN<
-ports_udp>PORTS_UDP<
+ports,port_default_scan>PORTS<DEFAULT_SCAN
+ports_ack,port_ack_scan>PORTS_ACK<PORTS_ACK
+ports_syn,port_syn_scan>PORTS_SYN<PORTS_SYN
+ports_udp,port_udp_scan>PORTS_UDP<PORTS_UDP
 ports_sctp>PORTS_SCTP<
+port_syn_scan><HOSTS
+port_con_scan><HOSTS
+port_ack_scan><HOSTS
+port_udp_scan><HOSTS
+port_default_scan>DEFAULT_SCAN<
 excluded_ports>EXCL_PORTS<PORTS
 top_ports>TOP_PORTS<PORTS
 list_scan><HOSTS
 ping_scan><HOSTS
-host_disc><HOSTS
+host_disc><HOSTS,DEFAULT_SCAN
 icmp_echo><HOSTS
 icmp_timestamp><HOSTS
 icmp_netmasq><HOSTS
 resolve><HOSTS
-port_udp_default><HOSTS
 limit_ports><PORTS
 randomize_ports><PORTS
 service_version><
 os_detect><HOSTS
-port_syn_scan><HOSTS
-port_con_scan><HOSTS
-port_ack_scan><HOSTS
 +++
 ports^top_ports
