@@ -19,8 +19,8 @@ function Write-PortScanning([ipaddress]$resolvedIP)
     }
 
     # Establish variables:
-    #$ports = @(22, 25, 80, 135, 139, 445) # To be updated if ports are specified! (top 5 default)
-    $ports = @(21, 25, 53, 80, 110, 111, 135, 139, 143, 443, 445, 465, 587, 993, 3306) # To be updated if ports are specified! (top 5 default)
+    $ports = @(22, 25, 80, 135, 139, 445) # To be updated if ports are specified! (top 5 default)
+    # $ports = @(21, 25, 53, 80, 110, 111, 135, 139, 143, 443, 445, 465, 587, 993, 3306) # To be updated if ports are specified! (top 5 default)
     $jobs = @() # Job array to hold all jobs (parallel threads)
 
     # Port scanning script block (for usage in the jobs!!)
@@ -116,3 +116,4 @@ function Write-PortScanning([ipaddress]$resolvedIP)
     $elapsedTime = $stopWatch.Elapsed.TotalMilliseconds
     Write-Output "ShellMap scanned in $elapsedTime ms" 
 }
+

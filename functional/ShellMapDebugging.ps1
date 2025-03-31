@@ -1,6 +1,6 @@
 Import-Module $PSScriptRoot\modules\SubNet-Calculate.psm1
-Import-Module $PSScriptRoot\modules\Host-Discovery.psm1
-Import-Module $PSScriptRoot\modules\Port-Scanning.psm1
+Import-Module $PSScriptRoot\modules\Host-DiscoveryDebug.psm1
+Import-Module $PSScriptRoot\modules\Port-ScanningDebug.psm1
 
 $startTime = Get-Date -Format "yyyy-MM-dd HH:mm"
 $timeZone = (Get-TimeZone).StandardName
@@ -34,8 +34,10 @@ for ( $i = 0; $i -lt $maxPos; $i++)
     # based off of the input flags! Will establish a visual of this later!
 
     # Write-HostDiscovery $ipAddress
+    $outputs = Get-ActiveHostObject $ipAddress
+    $outputs | Format-Table -Property STATUS, LATENCY -AutoSize
 
-    Write-PortScanning $ipAddress # Can add later the specific ports!
+    #Write-PortScanning $ipAddress # Can add later the specific ports!
 
 }
 
