@@ -1,4 +1,6 @@
 # import all functions from http.server module
+import socket
+import sys
 import traceback
 import ast
 from enum import Enum
@@ -14,6 +16,7 @@ import re
 
 # load module names and file paths as tuples
 module_files = [ (Path(f.path).stem, f.path) for f in os.scandir(os.path.join(os.getcwd(), "modules")) if f.is_file() ]
+server_address = "127.0.0.1"
 
 def encode(data: str) -> str:
     # key for XOR encoding is current minute
@@ -371,4 +374,10 @@ def run_server(server_class=HTTPServer, handler_class=RequestHandler, port=8000)
 
 if __name__ == "__main__":
     import pdb
+    if len(sys.argv) > 1:
+        try:
+            socket.inet_aton(sys.argv[1])
+            server_address = sys.argv[1]
+        except:
+            print(f"Invalid host IP address {sys.argv[1]}, using {server_address}")
     run_server()
