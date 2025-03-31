@@ -1,16 +1,16 @@
 Write-Host host_disc.ps1 
 # -Pn
-# Requires input of a resolved IP and list of ports
+# Requires input of a resolved IP ($HOSTIP) and list of ports ($PORTS)
 
-# Port scanning BUT without the ping scan
-# Will scan all ports (top 20 by default), on all hosts, regardless of if it's active:
+# Port scanning BUT without the ping scan (this is NOT the default)
+# Will scan all ports (top 20), on all hosts, regardless of if it's active:
 
 $jobs = @() # Job array to hold all jobs (parallel threads)
 
 # Port scanning script block (for usage in the jobs!!)
 $portScriptBlock = {
     param(
-        [string]$ipAddress,
+        [string]$HOSTIP,
         [string]$port
     )  
     
@@ -48,7 +48,7 @@ $portScriptBlock = {
     # Try-catch block for determining the port status: 
     try 
     {
-        $tcpClient.Connect($ipAddress, $port) # Try to connect to the TCP Client 
+        $tcpClient.Connect($HOSTIP, $port) # Try to connect to the TCP Client 
         # Success: actively listening for connections: OPEN
         $status = "OPEN"
     }
@@ -76,10 +76,10 @@ $portScriptBlock = {
 }
 
 # Connect to the server using the IP address and specified port
-foreach($port in $ports)
+foreach($port in $PORTS)
 { 
     # Start the job using the portScriptBlock:
-    $jobs += Start-Job -ScriptBlock $portScriptBlock -ArgumentList $ipAddress, $port
+    $jobs += Start-Job -ScriptBlock $portScriptBlock -ArgumentList $HOSTIP, $port
 }
 # First wait on each job before collecting the info (this means the slowest job will delay output slightly):
 Wait-Job -Job $jobs | Out-Null # Mute the actual thread info here!

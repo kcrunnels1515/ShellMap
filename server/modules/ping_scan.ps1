@@ -1,11 +1,11 @@
 Write-Host ping_scan.ps1
 # -sn
-# Requires input of a resolved IP 
+# Requires input of a resolved IP ($HOSTIP)
 
 # This is the basic host discovery WITHOUT port scanning following it
 
 # ICMP echo request (PING): with select to only get the PingCheck and ResponseTime (latency), silently continue if errors (host down)
-$pingResults = Test-Connection $ipAddress -Count 1 -ErrorAction SilentlyContinue
+$pingResults = Test-Connection $HOSTIP -Count 1 -ErrorAction SilentlyContinue
 if($pingResults)
 {
     $status = "TRUE"
