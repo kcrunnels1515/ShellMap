@@ -51,11 +51,11 @@ $HOSTS | ForEach-Object
     }
 
     # Subnet loop: (all hosts) THIS IS WHERE THE SCRIPTS WILL POPULATE!
-    $maxPos = 1 -shl (32 - $subNet)
+    $maxPos = 1 -shl (32 - $_.SUBNET)
     for ( $i = 0; $i -lt $maxPos; $i++) 
     {
         
-        $hostIP = Get-IPSubnet $resolvedIP $subNet $i
+        $hostIP = Get-IPSubnet $resolvedIP $_.SUBNET $i
 
         
 

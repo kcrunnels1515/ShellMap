@@ -31,7 +31,7 @@ PORTS_SCTP="@([PSCustomObject]@{ PORT = 80; RANGE = 0},[PSCustomObject]@{ PORT =
 EXCL_PORTS="@([PSCustomObject]@{ PORT = 80; RANGE = 0},[PSCustomObject]@{ PORT = 67; RANGE = 23},[PSCustomObject]@{ PORT = 56; RANGE = 0})"
 TOP_PORTS="[int]20"
 HOSTS="@([PSCustomObject]@{ BASE_HOST = "127.0.0.1"; SUBN = 32; RESOLV = $false })"
-DEFAULT_SCAN = "Get-Item -Path 'Function:\port_con_scan'"
+DEFAULT_SCAN = "Get-Item -Path 'Function:\port_syn_scan'"
 ===
 ports,port_default_scan>PORTS<DEFAULT_SCAN
 ports_ack,port_ack_scan>PORTS_ACK<PORTS_ACK
