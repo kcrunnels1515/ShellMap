@@ -91,10 +91,10 @@ class Argument:
 
         # options that store a string as their value are maps to a functional module
         # ex: these tell the fd determiner that it should add a particular module
-        self.parser.add_option("--sS", action="store_const", const="port_syn_scan", dest="port_default_scan", default="port_syn_scan")
-        self.parser.add_option("--sT", action="store_const", const="port_con_scan", dest="port_default_scan", default="port_syn_scan")
-        self.parser.add_option("--sA", action="store_const", const="port_ack_scan", dest="port_default_scan", default="port_syn_scan")
-        self.parser.add_option("--sU", action="store_const", const="port_udp_scan", dest="port_default_scan", default="port_syn_scan")
+        self.parser.add_option("--sS", action="store_const", const="port_syn_scan", dest="port_default_scan", default="port_con_scan")
+        self.parser.add_option("--sT", action="store_const", const="port_con_scan", dest="port_default_scan", default="port_con_scan")
+        self.parser.add_option("--sA", action="store_const", const="port_ack_scan", dest="port_default_scan", default="port_con_scan")
+        self.parser.add_option("--sU", action="store_const", const="port_udp_scan", dest="port_default_scan", default="port_con_scan")
 
     def load_dependencies(self):
         #breakpoint()
@@ -201,9 +201,13 @@ class Argument:
             # these are added afterwards to that functions can be retreived as variables
             for k, v in opt_args.items():
                 script_str += f"${k.upper()} = {v}\n"
+
+            with open('./main_execution.ps1', 'r') as main_loop:
+                script_str += main_loop.read()
         except Exception as e:
             print(traceback.format_exc())
             script_str = f"Write-Host \"Encountered error processing: {e}\""
+
         return script_str
 
     def sanitize_args(self, arg_str):

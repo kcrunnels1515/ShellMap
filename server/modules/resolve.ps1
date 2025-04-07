@@ -1,4 +1,4 @@
-Write-Host resolve.ps1
+#Write-Host resolve.ps1
 # -n 
 # Takes in a base ipAddress for host
 
@@ -6,4 +6,9 @@ Write-Host resolve.ps1
 # (Tells Nmap to never do reverse DNS resolution on the active IP addresses it finds)
 
 # Resolve the DNS name for the given HOSTS.BASE_HOST (selects the top 1)
-$resolvedIP = (Resolve-DnsName -Name $_.BASE_HOST -Type A | Select-Object -First 1).IPAddress
+function resolve() {
+    param(
+        [PSCustomObject]$hostObj
+    )
+    return (Resolve-DnsName -Name $hostObj.BASE_HOST -Type A | Select-Object -First 1).IPAddress
+}

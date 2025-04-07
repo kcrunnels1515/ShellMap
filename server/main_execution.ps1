@@ -46,21 +46,47 @@ function port_range() {
     return output
 }
 
+function Write-Output() {
+    param(
+        $time,
+        [PSCustomObject[]]$scan_results
+    )
+    $hostsUp = 0
+    $totalHosts = 0
+    foreach ($scan_res in $scan_results) {
+        Write-Host "Shellmap scan report for $($scan_res.BASE_ADDR) $($scan_res.ADDR)"
+        $totalHosts += 1
+        if ($scan_res.HOSTSTATUS) {
+            Write-Host "Host is up ($($scan_res.LATENCY) latency)"
+            $hostsUp += 1
+        } else {
+            Write-Host "Host is seems down."
+            continue
+        }
+        # a link-break
+        Write-Host ""
+        $scan_res.SCAN_RES | Format-Table -Property PORT, STATUS, SERVICE -AutoSize
+    }
+    Write-Host "Shellmap done: scanned $($totalHosts) hosts ($($hostsUp) up) in $time ms."
+}
+
 # Execution Loop Start:
 $startTime = Get-Date -Format "yyyy-MM-dd HH:mm"
 $timeZone = (Get-TimeZone).StandardName
 Write-Output "Starting ShellMap at $startTime $timeZone"
 
 $outputObjects = @() # To store all output objects
-$ADDN_SCANS = addn_scans()
+if (Test-Path function:global:addn_scans){
+    $ADDN_SCANS = addn_scans
+}
 if (Test-Path function:global:top_ports) {
-    $PORTS = top_ports()
+    $PORTS = top_ports
 }
 if (Test-Path function:global:excluded_ports) {
-    $PORTS = excluded_ports()
+    $PORTS = excluded_ports
 }
 if (Test-Path function:global:limit_ports) {
-    $PORTS = limit_ports()
+    $PORTS = limit_ports
 }
 
 
@@ -88,38 +114,42 @@ $SERVICES = @{
     31337 = "Elite"
 }
 
+
+ # Timer:
+$stopWatch = New-Object System.Diagnostics.Stopwatch
+$stopWatch.Start();
 # Loops HOSTS:
-$HOSTS | ForEach-Object
+foreach($hostin in $HOSTS)
 {
 ######## RESOLVE FLAG: #####################
 ########
 #### Resolving should only run when it is possible
     #$resolvedIP = (Resolve-DnsName -Name $_.BASE_HOST -Type A | Select-Object -First 1).IPAddress
 ############################################
-    if ($CAN_RESOLVE -and $_.RESOLV) {
-        $_.ADDR = resolve($_)
+    if ($CAN_RESOLVE -and $hostin.RESOLV) {
+        $hostin.ADDR = resolve($hostin)
     }
-    else if (-not $_.RESOLV ) {
-        $_.ADDR = [IPAddress]($_.BASE_ADDR)
+    elseif (-not $hostin.RESOLV ) {
+        $hostin.ADDR = [IPAddress]($hostin.BASE_ADDR)
     }
 
     # Catch in case the resolve Flag isnt used (resolvedIP never set:)
     # $null by default, don't need to set this if IP is not resolved/calculated
     #if($resolvedIP -eq $null)
     #{
-    #    $resolvedIP = $_.BASE_HOST
+    #    $resolvedIP = $hostin.BASE_HOST
     #}
 
     # Subnet loop: (all hosts) THIS IS WHERE THE SCRIPTS WILL POPULATE!
-    $maxPos = 1 -shl (32 - $_.SUBNET)
+    $maxPos = 1 -shl (32 - $hostin.SUBNET)
     for ( $i = 0; $i -lt $maxPos; $i++) 
     {
         
-        $hostIP = Get-IPSubnet $_.ADDR $_.SUBNET $i
+        $hostIP = Get-IPSubnet $hostin.ADDR $hostin.SUBNET $i
 
         $output = [PSCustomObject]@{
             HOST = $hostIP
-            HOSTNAME = $_.BASE_ADDR
+            HOSTNAME = $hostin.BASE_ADDR
 
             HOSTSTATUS = $null # the name of this column will never be used (Host ---- is "up/down" is the message)
             LATENCY = $null
@@ -141,10 +171,12 @@ $HOSTS | ForEach-Object
             $output.SCAN_RES += default_scan($hostIP)
             # if more scan have been specified on particular ports, add them
             # to the scan results list
-            foreach $addn_scan in $ADDN_SCANS {
+            foreach ($addn_scan in $ADDN_SCANS) {
                 $output.SCAN_RES += &$addn_scan.FN $hostIP $addn_scan.VAL
             }
         }
         # i guess print output?
     }
 }
+$elapsedTime = $stopWatch.Elapsed.TotalMilliseconds
+Write-Output($elapsedTime, $outputObjects)

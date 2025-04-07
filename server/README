@@ -1,3 +1,33 @@
+# Placeholder README to explain the variables (this file can be removed later!!!)
+
+# Output object should include:
+    # hostIP = the resolved IP (resolved at beginning of execution loop)
+    # hostName = the hostName (this is specifically used in the sanity check sL which- 
+    # - just lists hostIPs/with hostname and does not ping or anything)
+
+    # hostStatus = the "up/down" status found in host discovery (if used, otherwise left blank)
+    # latency = the time for the ping in host discovery (if used, otherwise left blank)
+    
+    # port = the port # specified + "/tcp" in the output (to match nmap formatting)
+    # portStatus = open/closed/filtered, updated via port scanning (if used, otherwise left blank)
+    # service = the port service (found in port scanning if used, otherwise left blank)
+
+# At the end of the executable loop (immediately following the scripts inserted -
+# - but not before end of host loop), create a PSObject containing all of these! then format table
+# - to include only the ones needed (exclude empty values/go off of flags)
+
+# $output = [PSCustomObject]@{
+#     HOST = $hostIP
+#     HOSTNAME = $hostName
+
+#     HOSTSTATUS = $hostStatus # the name of this column will never be used (Host ---- is "up/down" is the message)
+#     LATENCY = $latency
+
+#     PORT = $port
+#     STATUS = $portStatus
+#     SERVICE = $service
+# }
+
 # Server message passing structure
 https://stackoverflow.com/questions/8928730/processing-http-get-input-parameter-on-server-side-in-python
 

@@ -1,4 +1,4 @@
-Write-Host icmp_echo.ps1
+#Write-Host icmp_echo.ps1
 # -PE
 # Requires input of a resolved IP ($HOSTIP)
 
@@ -6,11 +6,17 @@ Write-Host icmp_echo.ps1
 
 # Updates the variables of the object: hostDisc!!!
 # ICMP echo request (PING): with select to only get the PingCheck and ResponseTime (latency), silently continue if errors (host down)
-$pingResults = Test-Connection $hostIP -Count 1 -ErrorAction SilentlyContinue
-if($pingResults)
-{
-    $hostStatus = "TRUE"
-    $latency = "$($pingResults.ResponseTime) ms"
-} else {
-    $hostStatus = "FALSE"
+function icmp_echo() {
+    param(
+        [PSCustomObject]$hostObj
+    )
+    $pingResults = Test-Connection $hostObj.HOST -Count 1 -ErrorAction SilentlyContinue
+    if($pingResults)
+    {
+        $hostObj.STATUS = "TRUE"
+        $hostObj.LATENCY = "$($pingResults.ResponseTime) ms"
+    } else {
+        $hostObj.STATUS = "FALSE"
+    }
+    return
 }
