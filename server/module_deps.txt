@@ -30,7 +30,7 @@ PORTS_UDP="@([PSCustomObject]@{ PORT = 80; RANGE = 0},[PSCustomObject]@{ PORT = 
 PORTS_SCTP="@([PSCustomObject]@{ PORT = 80; RANGE = 0},[PSCustomObject]@{ PORT = 67; RANGE = 23},[PSCustomObject]@{ PORT = 56; RANGE = 0})"
 EXCL_PORTS="@([PSCustomObject]@{ PORT = 80; RANGE = 0},[PSCustomObject]@{ PORT = 67; RANGE = 23},[PSCustomObject]@{ PORT = 56; RANGE = 0})"
 TOP_PORTS="[int]20"
-HOSTS="@([PSCustomObject]@{ BASE_HOST = "127.0.0.1"; SUBN = 32; RESOLV = $false })"
+HOSTS="@([PSCustomObject]@{ BASE_HOST = "127.0.0.1"; SUBN = 32; ADDR = $null; RESOLV = $false })"
 DEFAULT_SCAN = "Get-Item -Path 'Function:\port_con_scan'"
 ADDN_SCANS = "@()"
 ===
@@ -52,7 +52,7 @@ host_disc><HOSTS,DEFAULT_SCAN
 icmp_echo><HOSTS
 icmp_timestamp><HOSTS
 icmp_netmasq><HOSTS
-resolve><HOSTS
+resolve>CAN_RESOLV<HOSTS,CAN_RESOLV
 limit_ports><PORTS
 randomize_ports><PORTS
 service_version><

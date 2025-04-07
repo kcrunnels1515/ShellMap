@@ -321,13 +321,13 @@ class Argument:
                 # get subnet size
                 host_name,subn = host.split("/")
 
-                ret_str += "[PSCustomObject]@{ BASE_HOST = \"" + host_name + "\"; SUBN = " + subn + "; RESOLV = "
+                ret_str += "[PSCustomObject]@{ BASE_HOST = \"" + host_name + "\"; SUBN = " + subn + "; ADDR = $null; RESOLV = "
                 if host_name.replace(".", "").isnumeric():
                     ret_str += "$false },"
                 else:
                     ret_str += "$true },"
             else:
-                ret_str += "[PSCustomObject]@{ BASE_HOST = \"" + host + "\"; SUBN = 32; RESOLV = "
+                ret_str += "[PSCustomObject]@{ BASE_HOST = \"" + host + "\"; SUBN = 32; ADDR = $null; RESOLV = "
                 if host.replace(".", "").isnumeric():
                     ret_str += "$false },"
                 else:
