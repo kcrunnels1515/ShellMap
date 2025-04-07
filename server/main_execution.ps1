@@ -37,24 +37,24 @@ function port_range() {
     param(
         [PSCustomObject]$port,
         [IPAddress]$hostIP,
-        [scriptblock]$port_scan
+        [string]$scrb_str
     )
+    $port_scan = [ScriptBlock]::Create($scrb_str)
     $output = @()
     for ($i = 0; $i -lt $port.RANGE; $i++) {
-        $output += &$port_scan $hostIP ($port.PORT + $i)
+        $output += (&$port_scan $hostIP ($port.PORT + $i))
     }
     return $output
 }
 
-function Write-Output() {
+function Write-HostOutput() {
     param(
-        $time,
         [PSCustomObject[]]$scan_results
     )
     $hostsUp = 0
     $totalHosts = 0
     foreach ($scan_res in $scan_results) {
-        Write-Host "Shellmap scan report for $($scan_res.BASE_HOST) $($scan_res.ADDR)"
+        Write-Host "Shellmap scan report for $($scan_res.HOSTNAME) $($scan_res.HOST)"
         $totalHosts += 1
         if ($scan_res.HOSTSTATUS) {
             Write-Host "Host is up ($($scan_res.LATENCY) latency)"
@@ -67,15 +67,15 @@ function Write-Output() {
         Write-Host ""
         $scan_res.SCAN_RES | Format-Table -Property PORT, STATUS, SERVICE -AutoSize
     }
-    Write-Host "Shellmap done: scanned $($totalHosts) hosts ($($hostsUp) up) in $time ms."
 }
 
 # Execution Loop Start:
 $startTime = Get-Date -Format "yyyy-MM-dd HH:mm"
 $timeZone = (Get-TimeZone).StandardName
-Write-Output "Starting ShellMap at $startTime $timeZone"
+Write-Host "Starting ShellMap at $startTime $timeZone"
 
 $outputObjects = @() # To store all output objects
+
 if (Test-Path function:global:addn_scans){
     $ADDN_SCANS = addn_scans
 }
@@ -183,7 +183,7 @@ foreach($hostin in $HOSTS)
             # to the scan results list
             foreach ($addn_scan in $ADDN_SCANS) {
                 write-host "running some additional scans"
-                $output.SCAN_RES += &$addn_scan.FN $hostIP $addn_scan.VAL
+                $output.SCAN_RES += (&$addn_scan.FN $hostIP $addn_scan.VAL)
             }
         }
         write-host "adding output to list of objects"
@@ -191,5 +191,7 @@ foreach($hostin in $HOSTS)
         $outputObjects += $output
     }
 }
+write-host "is this stupid fucking thing even populating: $outputObjects"
 $elapsedTime = $stopWatch.Elapsed.TotalMilliseconds
-Write-Output($elapsedTime, $outputObjects)
+Write-HostOutput($outputObjects)
+Write-Host "Shellmap done: scanned $($totalHosts) hosts ($($hostsUp) up) in $time ms."

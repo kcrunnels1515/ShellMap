@@ -24,6 +24,7 @@ function port_con_scan() {
 
         # Deciding service value based off top 10+ ports and scan practices:
         # Reference: https://nmap.org/book/port-scanning.html#most-popular-ports
+        Write-host "about to do something that powershell might not like"
         $service = if ($SERVICES[$port]) {
             $SERVICES[$port]
         } else {
@@ -61,19 +62,19 @@ function port_con_scan() {
             SERVICE = $service
         }
     }
-    $con_scan_scr = {
-        param(
-            [IPAddress]$hostAddr,
-            [PSCustomObject]$portval
-        )
-        port_range($portval,$hostAddr,$scan_w_con)
-    }
+    #$con_scan_scr = {
+    #    param(
+    #        [IPAddress]$hostAddr,
+    #        [PSCustomObject]$portval
+    #    )
+    #    port_range($portval,$hostAddr,$scan_w_con)
+    #}
 
     # Connect to the server using the IP address and specified port
     foreach($port in $ports)
     {
         # Start the job using the portScriptBlock:
-        $jobs += Start-Job -ScriptBlock $con_scan_scr -ArgumentList $hostIP, $port
+        $jobs += Start-Job -ScriptBlock ${function:port_range} -ArgumentList $port, $hostIP, $scan_w_con
     }
     # First wait on each job before collecting the info (this means the slowest job will delay output slightly):
     Wait-Job -Job $jobs | Out-Null # Mute the actual thread info here!

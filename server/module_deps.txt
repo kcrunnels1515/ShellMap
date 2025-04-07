@@ -49,8 +49,9 @@ excluded_ports>EXCL_PORTS<PORTS
 top_ports>TOP_PORTS<PORTS
 list_scan><HOSTS
 ping_scan,host_disc><HOSTS
-host_disc,resolve><HOSTS,DEFAULT_SCAN
+host_disc,resolve,default_scan><HOSTS,DEFAULT_SCAN
 icmp_echo><HOSTS
+default_scan><
 icmp_timestamp><HOSTS
 icmp_netmasq><HOSTS
 resolve><HOSTS

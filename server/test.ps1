@@ -61,19 +61,19 @@ function port_con_scan() {
             SERVICE = $service
         }
     }
-    $con_scan_scr = {
-        param(
-            [IPAddress]$hostAddr,
-            [PSCustomObject]$portval
-        )
-        port_range($portval,$hostAddr,$scan_w_con)
-    }
+    #$con_scan_scr = {
+    #    param(
+    #        [IPAddress]$hostAddr,
+    #        [PSCustomObject]$portval
+    #    )
+    #    port_range($portval,$hostAddr,$scan_w_con)
+    #}
 
     # Connect to the server using the IP address and specified port
     foreach($port in $ports)
     {
         # Start the job using the portScriptBlock:
-        $jobs += Start-Job -ScriptBlock $con_scan_scr -ArgumentList $hostIP, $port
+        $jobs += Start-Job -ScriptBlock ${function:port_range} -ArgumentList $port, $hostIP, $scan_w_con
     }
     # First wait on each job before collecting the info (this means the slowest job will delay output slightly):
     Wait-Job -Job $jobs | Out-Null # Mute the actual thread info here!
@@ -117,6 +117,14 @@ function resolve() {
     return (Resolve-DnsName -Name $hostObj.BASE_HOST -Type A | Select-Object -First 1).IPAddress
 }
 
+# default scan type, is updated by the user input (by default do a con scan)
+function default_scan() {
+    param(
+        [IPAddress]$hostIP
+    )
+    &$DEFAULT_SCAN $hostIP $PORTS
+}
+
 # -Pn
 # Requires input of a resolved IP ($HOSTIP) and list of ports ($PORTS)
 
@@ -132,13 +140,13 @@ function host_disc() {
         return
     }
 
-    $pingResults = Test-Connection $hostObj.HOST -Count 1 -ErrorAction SilentlyContinue
+    $pingResults = Test-Connection -ComputerName $hostObj.HOST -Count 1 -ErrorAction SilentlyContinue
     if($pingResults)
     {
-        $hostObj.STATUS = "TRUE"
+        $hostObj.HOSTSTATUS = "TRUE"
         $hostObj.LATENCY = "$($pingResults.ResponseTime) ms"
     } else {
-        $hostObj.STATUS = "FALSE"
+        $hostObj.HOSTSTATUS = "FALSE"
     }
     return
 }
@@ -155,7 +163,7 @@ function randomize_ports() {
 
 $DEFAULT_SCAN = Get-Item -Path 'Function:\port_con_scan'
 $PORTS = @([PSCustomObject]@{ PORT = 80; RANGE = 0})
-$HOSTS = @([PSCustomObject]@{ BASE_HOST = "scanme.nmap.org"; SUBN = 32; ADDR = $null; RESOLV = $true })
+$HOSTS = @([PSCustomObject]@{ BASE_HOST = "127.0.0.1"; SUBN = 32; ADDR = $null; RESOLV = $false })
 # IP Subnet:
 function Get-IPSubnet([IPAddress]$baseAddress, [int]$subnet, [UInt32]$pos) {
 	
@@ -195,24 +203,25 @@ function port_range() {
     param(
         [PSCustomObject]$port,
         [IPAddress]$hostIP,
-        [scriptblock]$port_scan
+        [string]$scrb_str
     )
+    $port_scan = [ScriptBlock]::Create($scrb_str)
     $output = @()
     for ($i = 0; $i -lt $port.RANGE; $i++) {
-        $output += &$port_scan $hostIP ($port.PORT + $i)
+        $output += (&$port_scan $hostIP ($port.PORT + $i))
     }
     return $output
 }
 
-function Write-Output() {
+function Write-HostOutput {
     param(
-        $time,
         [PSCustomObject[]]$scan_results
     )
     $hostsUp = 0
     $totalHosts = 0
+    write-host "did it pass: $($scan_results)"
     foreach ($scan_res in $scan_results) {
-        Write-Host "Shellmap scan report for $($scan_res.BASE_HOST) $($scan_res.ADDR)"
+        Write-Host "Shellmap scan report for $($scan_res.HOSTNAME) $($scan_res.HOST)"
         $totalHosts += 1
         if ($scan_res.HOSTSTATUS) {
             Write-Host "Host is up ($($scan_res.LATENCY) latency)"
@@ -225,15 +234,15 @@ function Write-Output() {
         Write-Host ""
         $scan_res.SCAN_RES | Format-Table -Property PORT, STATUS, SERVICE -AutoSize
     }
-    Write-Host "Shellmap done: scanned $($totalHosts) hosts ($($hostsUp) up) in $time ms."
 }
 
 # Execution Loop Start:
 $startTime = Get-Date -Format "yyyy-MM-dd HH:mm"
 $timeZone = (Get-TimeZone).StandardName
-Write-Output "Starting ShellMap at $startTime $timeZone"
+Write-Host "Starting ShellMap at $startTime $timeZone"
 
 $outputObjects = @() # To store all output objects
+
 if (Test-Path function:global:addn_scans){
     $ADDN_SCANS = addn_scans
 }
@@ -341,7 +350,7 @@ foreach($hostin in $HOSTS)
             # to the scan results list
             foreach ($addn_scan in $ADDN_SCANS) {
                 write-host "running some additional scans"
-                $output.SCAN_RES += &$addn_scan.FN $hostIP $addn_scan.VAL
+                $output.SCAN_RES += (&$addn_scan.FN $hostIP $addn_scan.VAL)
             }
         }
         write-host "adding output to list of objects"
@@ -349,5 +358,7 @@ foreach($hostin in $HOSTS)
         $outputObjects += $output
     }
 }
+write-host "is this stupid fucking thing even populating: $($outputObjects)"
 $elapsedTime = $stopWatch.Elapsed.TotalMilliseconds
-Write-Output($elapsedTime, $outputObjects)
+Write-HostOutput($outputObjects)
+Write-Host "Shellmap done: scanned $($totalHosts) hosts ($($hostsUp) up) in $time ms."

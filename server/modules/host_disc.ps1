@@ -13,13 +13,13 @@ function host_disc() {
         return
     }
 
-    $pingResults = Test-Connection $hostObj.HOST -Count 1 -ErrorAction SilentlyContinue
+    $pingResults = Test-Connection -ComputerName $hostObj.HOST -Count 1 -ErrorAction SilentlyContinue
     if($pingResults)
     {
-        $hostObj.STATUS = "TRUE"
+        $hostObj.HOSTSTATUS = "TRUE"
         $hostObj.LATENCY = "$($pingResults.ResponseTime) ms"
     } else {
-        $hostObj.STATUS = "FALSE"
+        $hostObj.HOSTSTATUS = "FALSE"
     }
     return
 }
