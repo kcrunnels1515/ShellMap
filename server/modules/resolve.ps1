@@ -6,6 +6,7 @@
 # (Tells Nmap to never do reverse DNS resolution on the active IP addresses it finds)
 
 # Resolve the DNS name for the given HOSTS.BASE_HOST (selects the top 1)
+$CAN_RESOLV = $true
 function resolve() {
     param(
         [PSCustomObject]$hostObj

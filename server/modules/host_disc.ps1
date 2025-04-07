@@ -9,7 +9,7 @@ function host_disc() {
     param(
         [PSCustomObject]$hostObj
     )
-    if ($DEFAULT_SCAN -eq (Get-Item -Path 'Function:\list_scan')) {
+    if (Test-Path function:global:list_scan) {
         return
     }
 

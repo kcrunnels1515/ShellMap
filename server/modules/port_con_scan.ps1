@@ -57,7 +57,7 @@ function port_con_scan() {
         # Return the results of the port (PORT STATUS SERVICE)
         return [PSCustomObject]@{
             PORT = $port
-            PORTSTATUS = $status
+            STATUS = $status
             SERVICE = $service
         }
     }

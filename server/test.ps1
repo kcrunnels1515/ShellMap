@@ -1,54 +1,3 @@
-# -Pn
-# Requires input of a resolved IP ($HOSTIP) and list of ports ($PORTS)
-
-# Host discovery, default is ON, turned to OFF if the flag is set
-
-# Identical to ping_scan due to the the implementation style:
-# ICMP echo request (PING): with select to only get the PingCheck and ResponseTime (latency), silently continue if errors (host down)
-function host_disc() {
-    param(
-        [PSCustomObject]$hostObj
-    )
-    if ($DEFAULT_SCAN -eq (Get-Item -Path 'Function:\list_scan')) {
-        return
-    }
-
-    $pingResults = Test-Connection $hostObj.HOST -Count 1 -ErrorAction SilentlyContinue
-    if($pingResults)
-    {
-        $hostObj.STATUS = "TRUE"
-        $hostObj.LATENCY = "$($pingResults.ResponseTime) ms"
-    } else {
-        $hostObj.STATUS = "FALSE"
-    }
-    return
-}
-
-#Write-Host resolve.ps1
-# -n 
-# Takes in a base ipAddress for host
-
-# The flag "-n" turns this script to FALSE, and disables resolving the hostname:
-# (Tells Nmap to never do reverse DNS resolution on the active IP addresses it finds)
-
-# Resolve the DNS name for the given HOSTS.BASE_HOST (selects the top 1)
-function resolve() {
-    param(
-        [PSCustomObject]$hostObj
-    )
-    return (Resolve-DnsName -Name $hostObj.BASE_HOST -Type A | Select-Object -First 1).IPAddress
-}
-
-#Write-Host randomize_ports.ps1
-# -r
-# Requires that $PORTS is already set by default
-
-# By default this is off: (the port order is random rather than sequential)
-# This reorders them sequentially.
-function randomize_ports() {
-    return ($PORTS | Sort-Object)
-}
-
 #Write-Host port_con_scan.ps1
 # -sT
 # Requires input of ports ($PORTS) and ipAddress ($hostIP)
@@ -108,7 +57,7 @@ function port_con_scan() {
         # Return the results of the port (PORT STATUS SERVICE)
         return [PSCustomObject]@{
             PORT = $port
-            PORTSTATUS = $status
+            STATUS = $status
             SERVICE = $service
         }
     }
@@ -145,9 +94,68 @@ function port_con_scan() {
 #Write-Host port_default_scan.ps1
 # default scan type, is updated by the user input (by default do a con scan)
 
-$HOSTS = @([PSCustomObject]@{ BASE_HOST = "scanme.nmap.org"; SUBN = 32; RESOLV = $true })
-$PORTS = @([PSCustomObject]@{ PORT = 80; RANGE = 0},[PSCustomObject]@{ PORT = 67; RANGE = 23},[PSCustomObject]@{ PORT = 56; RANGE = 0})
+#Write-Host ports.ps1
+# -p
+# Requires an input of port(s) by the user ($PORTS)
+
+# Updates the port variables from top 20 to the specified list
+#$PORTS
+
+#Write-Host resolve.ps1
+# -n 
+# Takes in a base ipAddress for host
+
+# The flag "-n" turns this script to FALSE, and disables resolving the hostname:
+# (Tells Nmap to never do reverse DNS resolution on the active IP addresses it finds)
+
+# Resolve the DNS name for the given HOSTS.BASE_HOST (selects the top 1)
+$CAN_RESOLV = $true
+function resolve() {
+    param(
+        [PSCustomObject]$hostObj
+    )
+    return (Resolve-DnsName -Name $hostObj.BASE_HOST -Type A | Select-Object -First 1).IPAddress
+}
+
+# -Pn
+# Requires input of a resolved IP ($HOSTIP) and list of ports ($PORTS)
+
+# Host discovery, default is ON, turned to OFF if the flag is set
+
+# Identical to ping_scan due to the the implementation style:
+# ICMP echo request (PING): with select to only get the PingCheck and ResponseTime (latency), silently continue if errors (host down)
+function host_disc() {
+    param(
+        [PSCustomObject]$hostObj
+    )
+    if (Test-Path function:global:list_scan) {
+        return
+    }
+
+    $pingResults = Test-Connection $hostObj.HOST -Count 1 -ErrorAction SilentlyContinue
+    if($pingResults)
+    {
+        $hostObj.STATUS = "TRUE"
+        $hostObj.LATENCY = "$($pingResults.ResponseTime) ms"
+    } else {
+        $hostObj.STATUS = "FALSE"
+    }
+    return
+}
+
+#Write-Host randomize_ports.ps1
+# -r
+# Requires that $PORTS is already set by default
+
+# By default this is off: (the port order is random rather than sequential)
+# This reorders them sequentially.
+function randomize_ports() {
+    return ($PORTS | Sort-Object)
+}
+
 $DEFAULT_SCAN = Get-Item -Path 'Function:\port_con_scan'
+$PORTS = @([PSCustomObject]@{ PORT = 80; RANGE = 0})
+$HOSTS = @([PSCustomObject]@{ BASE_HOST = "scanme.nmap.org"; SUBN = 32; ADDR = $null; RESOLV = $true })
 # IP Subnet:
 function Get-IPSubnet([IPAddress]$baseAddress, [int]$subnet, [UInt32]$pos) {
 	
@@ -193,7 +201,7 @@ function port_range() {
     for ($i = 0; $i -lt $port.RANGE; $i++) {
         $output += &$port_scan $hostIP ($port.PORT + $i)
     }
-    return output
+    return $output
 }
 
 function Write-Output() {
@@ -204,7 +212,7 @@ function Write-Output() {
     $hostsUp = 0
     $totalHosts = 0
     foreach ($scan_res in $scan_results) {
-        Write-Host "Shellmap scan report for $($scan_res.BASE_ADDR) $($scan_res.ADDR)"
+        Write-Host "Shellmap scan report for $($scan_res.BASE_HOST) $($scan_res.ADDR)"
         $totalHosts += 1
         if ($scan_res.HOSTSTATUS) {
             Write-Host "Host is up ($($scan_res.LATENCY) latency)"
@@ -269,37 +277,44 @@ $SERVICES = @{
 $stopWatch = New-Object System.Diagnostics.Stopwatch
 $stopWatch.Start();
 # Loops HOSTS:
-$HOSTS | ForEach-Object
+if (Test-Path function:global:resolve) {
+    write-host "resolve is present"
+}
+
+foreach($hostin in $HOSTS)
 {
+    write-host "entered loop"
 ######## RESOLVE FLAG: #####################
 ########
 #### Resolving should only run when it is possible
     #$resolvedIP = (Resolve-DnsName -Name $_.BASE_HOST -Type A | Select-Object -First 1).IPAddress
 ############################################
-    if ($CAN_RESOLVE -and $_.RESOLV) {
-        $_.ADDR = resolve($_)
+    if ($CAN_RESOLV -and $hostin.RESOLV) {
+        write-host "resolving name"
+        $hostin.ADDR = resolve($hostin)
     }
-    elseif (-not $_.RESOLV ) {
-        $_.ADDR = [IPAddress]($_.BASE_ADDR)
+    elseif (-not $hostin.RESOLV ) {
+        write-host "not resolving"
+        $hostin.ADDR = [IPAddress]($hostin.BASE_HOST)
     }
 
     # Catch in case the resolve Flag isnt used (resolvedIP never set:)
     # $null by default, don't need to set this if IP is not resolved/calculated
     #if($resolvedIP -eq $null)
     #{
-    #    $resolvedIP = $_.BASE_HOST
+    #    $resolvedIP = $hostin.BASE_HOST
     #}
 
     # Subnet loop: (all hosts) THIS IS WHERE THE SCRIPTS WILL POPULATE!
-    $maxPos = 1 -shl (32 - $_.SUBNET)
+    $maxPos = 1 -shl (32 - $hostin.SUBN)
     for ( $i = 0; $i -lt $maxPos; $i++) 
     {
-        
-        $hostIP = Get-IPSubnet $_.ADDR $_.SUBNET $i
+        write-host "entered subnet loop"
+        $hostIP = Get-IPSubnet $hostin.ADDR $hostin.SUBN $i
 
         $output = [PSCustomObject]@{
             HOST = $hostIP
-            HOSTNAME = $_.BASE_ADDR
+            HOSTNAME = $hostin.BASE_HOST
 
             HOSTSTATUS = $null # the name of this column will never be used (Host ---- is "up/down" is the message)
             LATENCY = $null
@@ -311,21 +326,27 @@ $HOSTS | ForEach-Object
         }
 
         if ($hostIP -eq $null) {
+            write-host "did not get an ip to scan"
             # can't do anything, say something in output to this effect
         } else {
             # discover hosts, if we can
             # dose nothing if we can't
+            write-host "Run host discovery"
             host_disc($output)
             # get the results for running the actual scan
             # if this is a ping/list scan, shouldn't do anything
+            write-host "running scan on host"
             $output.SCAN_RES += default_scan($hostIP)
             # if more scan have been specified on particular ports, add them
             # to the scan results list
             foreach ($addn_scan in $ADDN_SCANS) {
+                write-host "running some additional scans"
                 $output.SCAN_RES += &$addn_scan.FN $hostIP $addn_scan.VAL
             }
         }
-        # i guess print output?
+        write-host "adding output to list of objects"
+        write-host "output object: $output"
+        $outputObjects += $output
     }
 }
 $elapsedTime = $stopWatch.Elapsed.TotalMilliseconds

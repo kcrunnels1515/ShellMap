@@ -131,7 +131,7 @@ foreach($hostin in $HOSTS)
 #### Resolving should only run when it is possible
     #$resolvedIP = (Resolve-DnsName -Name $_.BASE_HOST -Type A | Select-Object -First 1).IPAddress
 ############################################
-    if ($CAN_RESOLVE -and $hostin.RESOLV) {
+    if ($CAN_RESOLV -and $hostin.RESOLV) {
         write-host "resolving name"
         $hostin.ADDR = resolve($hostin)
     }
