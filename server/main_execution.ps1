@@ -43,7 +43,7 @@ function port_range() {
     for ($i = 0; $i -lt $port.RANGE; $i++) {
         $output += &$port_scan $hostIP ($port.PORT + $i)
     }
-    return output
+    return $output
 }
 
 function Write-Output() {
@@ -119,8 +119,11 @@ $SERVICES = @{
 $stopWatch = New-Object System.Diagnostics.Stopwatch
 $stopWatch.Start();
 # Loops HOSTS:
+
 foreach($hostin in $HOSTS)
 {
+    write-host "host stff shoudl print after"
+    write-host $hostin
 ######## RESOLVE FLAG: #####################
 ########
 #### Resolving should only run when it is possible
@@ -130,7 +133,7 @@ foreach($hostin in $HOSTS)
         $hostin.ADDR = resolve($hostin)
     }
     elseif (-not $hostin.RESOLV ) {
-        $hostin.ADDR = [IPAddress]($hostin.BASE_ADDR)
+        $hostin.ADDR = [IPAddress]($hostin.BASE_HOST)
     }
 
     # Catch in case the resolve Flag isnt used (resolvedIP never set:)
@@ -175,7 +178,7 @@ foreach($hostin in $HOSTS)
                 $output.SCAN_RES += &$addn_scan.FN $hostIP $addn_scan.VAL
             }
         }
-        # i guess print output?
+        $outputObjects += $output
     }
 }
 $elapsedTime = $stopWatch.Elapsed.TotalMilliseconds
