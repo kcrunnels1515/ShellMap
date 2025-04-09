@@ -1,4 +1,3 @@
-Write-Host host_disc.ps1 
 # -Pn
 # Requires input of a resolved IP ($HOSTIP) and list of ports ($PORTS)
 
@@ -6,11 +5,21 @@ Write-Host host_disc.ps1
 
 # Identical to ping_scan due to the the implementation style:
 # ICMP echo request (PING): with select to only get the PingCheck and ResponseTime (latency), silently continue if errors (host down)
-$pingResults = Test-Connection $hostIP -Count 1 -ErrorAction SilentlyContinue
-if($pingResults)
-{
-    $hostStatus = "TRUE"
-    $latency = "$($pingResults.ResponseTime) ms"
-} else {
-    $hostStatus = "FALSE"
+function host_disc() {
+    param(
+        [PSCustomObject]$hostObj
+    )
+    if (Test-Path function:global:list_scan) {
+        return
+    }
+
+    $pingResults = Test-Connection -ComputerName $hostObj.HOST -Count 1 -ErrorAction SilentlyContinue
+    if($pingResults)
+    {
+        $hostObj.HOSTSTATUS = "TRUE"
+        $hostObj.LATENCY = "$($pingResults.ResponseTime) ms"
+    } else {
+        $hostObj.HOSTSTATUS = "FALSE"
+    }
+    return
 }
