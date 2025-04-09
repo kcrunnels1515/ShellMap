@@ -31,7 +31,7 @@ if which tmux 2>&1 1>/dev/null; then
 	echo "Created new tmux session 'shellmap_server'"
 	echo "View the execution of the server with 'tmux attach-session -t shellmap_server'"
 	echo "Starting ShellMap server..."
-	tmux send-keys -t shellmap_server 'python ./server.py' C-m
+	tmux send-keys -t shellmap_server 'python3 ./server.py' C-m
 	exit
 else
 	echo "Please install tmux"
