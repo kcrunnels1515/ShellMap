@@ -24,12 +24,30 @@ function port_con_scan() {
 
         # Deciding service value based off top 10+ ports and scan practices:
         # Reference: https://nmap.org/book/port-scanning.html#most-popular-ports
-        Write-host "about to do something that powershell might not like"
-        $service = if ($SERVICES[$port]) {
-            $SERVICES[$port]
-        } else {
-            "unknown service"
-        }
+        $service = switch($port){
+			21 {"ftp"}
+			22 { "ssh"}
+			23 { "telnet"}
+			25 { "smtp"}
+			53 { "domain"}
+			80 { "http" }
+			110 { "pop3"}
+			111 { "rpcbind"}
+			135 { "msrpc"}
+			139 { "netbios-ssn"}
+			143 { "imap"}
+			443 { "https"}
+			445 { "microsoft-ds"}
+			465 { "smtps"}
+			587 { "submission"}
+			993 { "imaps"}
+			995 { "pop3s"}
+			3306 { "mysql"}
+			3389 { "ms-team-server"}
+			9929 { "nping-echo"}
+			31337 { "Elite" }
+			default {"Unknown"}
+		}
 
         # TCP does a 3-way handshake: client -> SYN to server. server -> SYN + ACK to client. client -> ACK to server
         $tcpClient = New-Object System.Net.Sockets.TcpClient
@@ -73,9 +91,12 @@ function port_con_scan() {
     # Connect to the server using the IP address and specified port
     foreach($port in $ports)
     {
-        # Start the job using the portScriptBlock:
-        $jobs += Start-Job -ScriptBlock ${function:port_range} -ArgumentList $port, $hostIP, $scan_w_con
+		for ($calcd_port = $port.PORT; $calcd_port -le $port.PORT + $port.RANGE; $calcd_port++) {
+			# Start the job using the portScriptBlock:
+			$jobs += Start-Job -ScriptBlock $scan_w_con -ArgumentList $hostIP, $calcd_port
+		}
     }
+
     # First wait on each job before collecting the info (this means the slowest job will delay output slightly):
     Wait-Job -Job $jobs | Out-Null # Mute the actual thread info here!
 
@@ -90,4 +111,3 @@ function port_con_scan() {
     # return the scan objects
     $outputs
 }
-

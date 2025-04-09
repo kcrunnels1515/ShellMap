@@ -67,6 +67,7 @@ function Write-HostOutput() {
         Write-Host ""
         $scan_res.SCAN_RES | Format-Table -Property PORT, STATUS, SERVICE -AutoSize
     }
+    Write-Host "Shellmap done: scanned $($totalHosts) hosts ($($hostsUp) up) in $time ms."
 }
 
 # Execution Loop Start:
@@ -89,54 +90,25 @@ if (Test-Path function:global:limit_ports) {
     $PORTS = limit_ports
 }
 
-
-$SERVICES = @{
-    21 = "ftp";
-    22 = "ssh";
-    23 = "telnet";
-    25 = "smtp";
-    53 = "domain";
-    80 = "http";
-    110 = "pop3";
-    111 = "rpcbind";
-    135 = "msrpc";
-    139 = "netbios-ssn";
-    143 = "imap";
-    443 = "https";
-    445 = "microsoft-ds";
-    465 = "smtps";
-    587 = "submission";
-    993 = "imaps";
-    995 = "pop3s";
-    3306 = "mysql";
-    3389 = "ms-team-server";
-    9929 = "nping-echo";
-    31337 = "Elite"
-}
-
-
  # Timer:
 $stopWatch = New-Object System.Diagnostics.Stopwatch
 $stopWatch.Start();
 # Loops HOSTS:
-if (Test-Path function:global:resolve) {
-    write-host "resolve is present"
-}
 
 foreach($hostin in $HOSTS)
 {
-    write-host "entered loop"
+   # write-host "entered loop"
 ######## RESOLVE FLAG: #####################
 ########
 #### Resolving should only run when it is possible
     #$resolvedIP = (Resolve-DnsName -Name $_.BASE_HOST -Type A | Select-Object -First 1).IPAddress
 ############################################
     if ($CAN_RESOLV -and $hostin.RESOLV) {
-        write-host "resolving name"
+       # write-host "resolving name"
         $hostin.ADDR = resolve($hostin)
     }
     elseif (-not $hostin.RESOLV ) {
-        write-host "not resolving"
+        #write-host "not resolving"
         $hostin.ADDR = [IPAddress]($hostin.BASE_HOST)
     }
 
@@ -151,7 +123,7 @@ foreach($hostin in $HOSTS)
     $maxPos = 1 -shl (32 - $hostin.SUBN)
     for ( $i = 0; $i -lt $maxPos; $i++) 
     {
-        write-host "entered subnet loop"
+        #write-host "entered subnet loop"
         $hostIP = Get-IPSubnet $hostin.ADDR $hostin.SUBN $i
 
         $output = [PSCustomObject]@{
@@ -168,30 +140,29 @@ foreach($hostin in $HOSTS)
         }
 
         if ($hostIP -eq $null) {
-            write-host "did not get an ip to scan"
+            #write-host "did not get an ip to scan"
             # can't do anything, say something in output to this effect
         } else {
             # discover hosts, if we can
             # dose nothing if we can't
-            write-host "Run host discovery"
+            #write-host "Run host discovery"
             host_disc($output)
             # get the results for running the actual scan
             # if this is a ping/list scan, shouldn't do anything
-            write-host "running scan on host"
+            #write-host "running scan on host"
             $output.SCAN_RES += default_scan($hostIP)
             # if more scan have been specified on particular ports, add them
             # to the scan results list
             foreach ($addn_scan in $ADDN_SCANS) {
-                write-host "running some additional scans"
+                #write-host "running some additional scans"
                 $output.SCAN_RES += (&$addn_scan.FN $hostIP $addn_scan.VAL)
             }
         }
-        write-host "adding output to list of objects"
-        write-host "output object: $output"
+        #write-host "adding output to list of objects"
+        #write-host "output object: $output"
         $outputObjects += $output
     }
 }
-write-host "is this stupid fucking thing even populating: $outputObjects"
+#write-host "is this stupid fucking thing even populating: $outputObjects"
 $elapsedTime = $stopWatch.Elapsed.TotalMilliseconds
 Write-HostOutput($outputObjects)
-Write-Host "Shellmap done: scanned $($totalHosts) hosts ($($hostsUp) up) in $time ms."
