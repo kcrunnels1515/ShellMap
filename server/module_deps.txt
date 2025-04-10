@@ -35,7 +35,7 @@ DEFAULT_SCAN = "Get-Item -Path 'Function:\port_con_scan'"
 CAN_RESOLV="$false"
 ADDN_SCANS = "@()"
 ===
-ports,port_default_scan>PORTS<DEFAULT_SCAN
+ports,default_scan>PORTS<DEFAULT_SCAN
 ports_ack,addn_scans,port_ack_scan>PORTS_ACK<PORTS_ACK
 ports_syn,addn_scans,port_syn_scan>PORTS_SYN<PORTS_SYN
 ports_udp,addn_scans,port_udp_scan>PORTS_UDP<PORTS_UDP
@@ -44,14 +44,13 @@ port_syn_scan><HOSTS
 port_con_scan><HOSTS
 port_ack_scan><HOSTS
 port_udp_scan><HOSTS
-port_default_scan>DEFAULT_SCAN<
 excluded_ports>EXCL_PORTS<PORTS
 top_ports>TOP_PORTS<PORTS
 list_scan><HOSTS
 ping_scan,host_disc><HOSTS
 host_disc,resolve,default_scan><HOSTS,DEFAULT_SCAN
 icmp_echo><HOSTS
-default_scan><
+default_scan>DEFAULT_SCAN<
 icmp_timestamp><HOSTS
 icmp_netmasq><HOSTS
 resolve><HOSTS

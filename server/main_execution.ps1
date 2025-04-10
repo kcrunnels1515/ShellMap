@@ -51,31 +51,31 @@ function Write-HostOutput() {
     param(
         [PSCustomObject[]]$scan_results
     )
-    $hostsUp = 0
-    $totalHosts = 0
     foreach ($scan_res in $scan_results) {
-        Write-Host "Shellmap scan report for $($scan_res.HOSTNAME) $($scan_res.HOST)"
-        $totalHosts += 1
+        $hostIP = $scan_res.HOST
+
+        if (-not $scan_res.HOST) {
+            $hostIP = "?.?.?.?"
+        }
+        Write-Host "Shellmap scan report for $($scan_res.HOSTNAME) ($($hostIP))"
         if ($scan_res.HOSTSTATUS) {
             Write-Host "Host is up ($($scan_res.LATENCY) latency)"
-            $hostsUp += 1
         } else {
             Write-Host "Host is seems down."
             continue
         }
         # a link-break
         Write-Host ""
-        $scan_res.SCAN_RES | Format-Table -Property PORT, STATUS, SERVICE -AutoSize
+        if ($scan_res.SCAN_RES) {
+            $scan_res.SCAN_RES | Format-Table -Property PORT, STATUS, SERVICE -AutoSize
+        }
     }
-    Write-Host "Shellmap done: scanned $($totalHosts) hosts ($($hostsUp) up) in $time ms."
 }
 
 # Execution Loop Start:
 $startTime = Get-Date -Format "yyyy-MM-dd HH:mm"
 $timeZone = (Get-TimeZone).StandardName
 Write-Host "Starting ShellMap at $startTime $timeZone"
-
-$outputObjects = @() # To store all output objects
 
 if (Test-Path function:global:addn_scans){
     $ADDN_SCANS = addn_scans
@@ -89,6 +89,11 @@ if (Test-Path function:global:excluded_ports) {
 if (Test-Path function:global:limit_ports) {
     $PORTS = limit_ports
 }
+
+# for counting scanned hosts
+$hostsUp = 0
+$totalHosts = 0
+
 
  # Timer:
 $stopWatch = New-Object System.Diagnostics.Stopwatch
@@ -119,16 +124,19 @@ foreach($hostin in $HOSTS)
     #    $resolvedIP = $hostin.BASE_HOST
     #}
 
+    $outputObjects = @() # To store all output objects
+
     # Subnet loop: (all hosts) THIS IS WHERE THE SCRIPTS WILL POPULATE!
     $maxPos = 1 -shl (32 - $hostin.SUBN)
     for ( $i = 0; $i -lt $maxPos; $i++) 
     {
+        $totalHosts++
         #write-host "entered subnet loop"
         $hostIP = Get-IPSubnet $hostin.ADDR $hostin.SUBN $i
 
         $output = [PSCustomObject]@{
             HOST = $hostIP
-            HOSTNAME = $hostin.BASE_HOST
+            HOSTNAME = if ($hostin.RESOLV) {$hostin.BASE_HOST} else { $hostIP }
 
             HOSTSTATUS = $null # the name of this column will never be used (Host ---- is "up/down" is the message)
             LATENCY = $null
@@ -147,6 +155,9 @@ foreach($hostin in $HOSTS)
             # dose nothing if we can't
             #write-host "Run host discovery"
             host_disc($output)
+            if ($output.HOSTSTATUS) {
+                $hostsUp++
+            }
             # get the results for running the actual scan
             # if this is a ping/list scan, shouldn't do anything
             #write-host "running scan on host"
@@ -162,7 +173,8 @@ foreach($hostin in $HOSTS)
         #write-host "output object: $output"
         $outputObjects += $output
     }
+    Write-HostOutput($outputObjects)
 }
 #write-host "is this stupid fucking thing even populating: $outputObjects"
 $elapsedTime = $stopWatch.Elapsed.TotalMilliseconds
-Write-HostOutput($outputObjects)
+Write-Host "Shellmap done: scanned $($totalHosts) hosts ($($hostsUp) up) in $($elapsedTime) ms."

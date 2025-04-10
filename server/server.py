@@ -77,8 +77,6 @@ class Argument:
         self.parser.add_option("--top-ports", action="store", type="int", dest="top_ports")
 
         # options that modify behavior
-        self.parser.add_option("--sL", action="store_true", dest="list_scan", default=False)
-        self.parser.add_option("--sn", action="store_true", dest="ping_scan", default=False)
         self.parser.add_option("--Pn", action="store_false", dest="host_disc", default=True)
         self.parser.add_option("--PE", action="store_true", dest="icmp_echo", default=False)
         self.parser.add_option("--PP", action="store_true", dest="icmp_timestamp", default=False)
@@ -91,10 +89,12 @@ class Argument:
 
         # options that store a string as their value are maps to a functional module
         # ex: these tell the fd determiner that it should add a particular module
-        self.parser.add_option("--sS", action="store_const", const="port_syn_scan", dest="port_default_scan", default="port_con_scan")
-        self.parser.add_option("--sT", action="store_const", const="port_con_scan", dest="port_default_scan", default="port_con_scan")
-        self.parser.add_option("--sA", action="store_const", const="port_ack_scan", dest="port_default_scan", default="port_con_scan")
-        self.parser.add_option("--sU", action="store_const", const="port_udp_scan", dest="port_default_scan", default="port_con_scan")
+        self.parser.add_option("--sL", action="store_const", const="list_scan", dest="default_scan", default="port_con_scan")
+        self.parser.add_option("--sn", action="store_const", const="ping_scan", dest="default_scan", default="port_con_scan")
+        self.parser.add_option("--sS", action="store_const", const="port_syn_scan", dest="default_scan", default="port_con_scan")
+        self.parser.add_option("--sT", action="store_const", const="port_con_scan", dest="default_scan", default="port_con_scan")
+        self.parser.add_option("--sA", action="store_const", const="port_ack_scan", dest="default_scan", default="port_con_scan")
+        self.parser.add_option("--sU", action="store_const", const="port_udp_scan", dest="default_scan", default="port_con_scan")
 
     def load_dependencies(self):
         #breakpoint()

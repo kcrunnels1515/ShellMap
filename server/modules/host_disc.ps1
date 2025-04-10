@@ -16,10 +16,11 @@ function host_disc() {
     $pingResults = Test-Connection -ComputerName $hostObj.HOST -Count 1 -ErrorAction SilentlyContinue
     if($pingResults)
     {
-        $hostObj.HOSTSTATUS = "TRUE"
+        $hostObj.HOSTSTATUS = $true
         $hostObj.LATENCY = "$($pingResults.ResponseTime) ms"
     } else {
-        $hostObj.HOSTSTATUS = "FALSE"
+        $hostObj.HOSTSTATUS = $false
+        $hostObj.LATENCY = "timeout"
     }
     return
 }
