@@ -58,11 +58,13 @@ function Write-HostOutput() {
             $hostIP = "?.?.?.?"
         }
         Write-Host "Shellmap scan report for $($scan_res.HOSTNAME) ($($hostIP))"
-        if ($scan_res.HOSTSTATUS) {
+        if ($scan_res.HOSTSTATUS -gt 0) {
             Write-Host "Host is up ($($scan_res.LATENCY) latency)"
-        } else {
+        } else if ($scan_res.HOSTSTATUS -lt 0) {
             Write-Host "Host is seems down."
             continue
+        } else {
+            Write-Host "No information on host"
         }
         # a link-break
         Write-Host ""
@@ -138,13 +140,10 @@ foreach($hostin in $HOSTS)
             HOST = $hostIP
             HOSTNAME = if ($hostin.RESOLV) {$hostin.BASE_HOST} else { $hostIP }
 
-            HOSTSTATUS = $null # the name of this column will never be used (Host ---- is "up/down" is the message)
+            HOSTSTATUS = 0 # the name of this column will never be used (Host ---- is "up/down" is the message)
             LATENCY = $null
 
             SCAN_RES = @()
-            #PORT = $null
-            #STATUS = $null
-            #SERVICE = $null
         }
 
         if ($hostIP -eq $null) {
@@ -154,7 +153,9 @@ foreach($hostin in $HOSTS)
             # discover hosts, if we can
             # dose nothing if we can't
             #write-host "Run host discovery"
-            host_disc($output)
+            if ($HOST_DISC) {
+                host_disc($output)
+            }
             if ($output.HOSTSTATUS) {
                 $hostsUp++
             }

@@ -8,15 +8,14 @@
 # ICMP echo request (PING): with select to only get the PingCheck and ResponseTime (latency), silently continue if errors (host down)
 function icmp_echo() {
     param(
-        [PSCustomObject]$hostObj
+        [IPAddress]$hostIP
     )
-    $pingResults = Test-Connection $hostObj.HOST -Count 1 -ErrorAction SilentlyContinue
+
+    $pingResults = Test-Connection -ComputerName $hostIP -Count 1 -ErrorAction SilentlyContinue
     if($pingResults)
     {
-        $hostObj.STATUS = "TRUE"
-        $hostObj.LATENCY = "$($pingResults.ResponseTime) ms"
+        return @{STATUS = 1; LATENCY = "$($pingResults.ResponseTime) ms" }
     } else {
-        $hostObj.STATUS = "FALSE"
+        return @{STATUS = -1; LATENCY = "timeout" }
     }
-    return
 }

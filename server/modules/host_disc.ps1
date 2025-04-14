@@ -9,18 +9,8 @@ function host_disc() {
     param(
         [PSCustomObject]$hostObj
     )
-    if (Test-Path function:global:list_scan) {
-        return
-    }
-
-    $pingResults = Test-Connection -ComputerName $hostObj.HOST -Count 1 -ErrorAction SilentlyContinue
-    if($pingResults)
-    {
-        $hostObj.HOSTSTATUS = $true
-        $hostObj.LATENCY = "$($pingResults.ResponseTime) ms"
-    } else {
-        $hostObj.HOSTSTATUS = $false
-        $hostObj.LATENCY = "timeout"
-    }
+    $disc_res = disc_method($hostObj.HOST)
+    $hostObj.HOSTSTATUS = $disc_res.STATUS
+    $hostObj.LATENCY = $disc_res.LATENCY
     return
 }
