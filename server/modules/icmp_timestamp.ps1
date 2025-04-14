@@ -4,9 +4,8 @@
 # Not currently possible with PowerShell (no timestamp type messages can be sent).
 function icmp_timestamp() {
     param(
-        [PSCustomObject]$hostObj
+        [IPAddress]$hostIP
     )
-
-    $hostObj.STATUS = "Timestamp not implemented"
-    return
+    write-output "ICMP timestamp not implemented"
+    return @{STATUS = 0; LATENCY = ""}
 }

@@ -32,10 +32,12 @@ EXCL_PORTS="@([PSCustomObject]@{ PORT = 80; RANGE = 0},[PSCustomObject]@{ PORT =
 TOP_PORTS="[int]20"
 HOSTS="@([PSCustomObject]@{ BASE_HOST = "127.0.0.1"; SUBN = 32; RESOLV = $false })"
 DEFAULT_SCAN = "Get-Item -Path 'Function:\port_con_scan'"
+DISC_METHOD = "Get-Item -Path 'Function:\ping_scan'"
 CAN_RESOLV="$false"
 ADDN_SCANS = "@()"
+HOST_DISC = "$false"
 ===
-ports,port_default_scan>PORTS<DEFAULT_SCAN
+ports,default_scan>PORTS<DEFAULT_SCAN
 ports_ack,addn_scans,port_ack_scan>PORTS_ACK<PORTS_ACK
 ports_syn,addn_scans,port_syn_scan>PORTS_SYN<PORTS_SYN
 ports_udp,addn_scans,port_udp_scan>PORTS_UDP<PORTS_UDP
@@ -44,21 +46,21 @@ port_syn_scan><HOSTS
 port_con_scan><HOSTS
 port_ack_scan><HOSTS
 port_udp_scan><HOSTS
-port_default_scan>DEFAULT_SCAN<
 excluded_ports>EXCL_PORTS<PORTS
 top_ports>TOP_PORTS<PORTS
-list_scan><HOSTS
-ping_scan,host_disc><HOSTS
-host_disc,resolve,default_scan><HOSTS,DEFAULT_SCAN
+list_scan><HOSTS,HOST_DISC
+ping_scan><HOSTS,HOST_DISC
+host_disc,resolve,disc_method>HOST_DISC<HOSTS,DEFAULT_SCAN
+disc_method>DISC_METHOD<
 icmp_echo><HOSTS
-default_scan><
+default_scan>DEFAULT_SCAN<
 icmp_timestamp><HOSTS
 icmp_netmasq><HOSTS
-resolve><HOSTS
+resolve>CAN_RESOLV<HOSTS,CAN_RESOLV
 limit_ports><PORTS
 randomize_ports><PORTS
 service_version><
 os_detect><HOSTS
-addn_scans>ADDN_SCANS<
+addn_scans>ADDN_SCANS<ADDN_SCANS
 +++
 ports^top_ports

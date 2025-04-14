@@ -17,3 +17,13 @@
   ```powershell
   Set-ExecutionPolicy AllSigned
   ```
+
+## Server Setup
+- install nginx
+- install git
+- install tmux
+- install dig
+- install python3
+- create new user
+
+https://yhuh.medium.com/how-to-easily-host-your-express-server-on-https-without-a-domain-name-dccd92b2438d

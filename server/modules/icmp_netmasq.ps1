@@ -2,11 +2,10 @@
 # -PM
 
 # Not currently possible with PowerShell (no ICMP netmask messages can be sent).
-function icmp_netmask() {
+function icmp_netmasq() {
     param(
-        [PSCustomObject]$hostObj
+        [IPAddress]$hostIP
     )
-
-    $hostObj.STATUS = "Netmask not implemented"
-    return
+    write-output "ICMP Netmasq not implemented"
+    return @{STATUS = 0; LATENCY = ""}
 }

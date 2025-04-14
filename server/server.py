@@ -77,12 +77,7 @@ class Argument:
         self.parser.add_option("--top-ports", action="store", type="int", dest="top_ports")
 
         # options that modify behavior
-        self.parser.add_option("--sL", action="store_true", dest="list_scan", default=False)
-        self.parser.add_option("--sn", action="store_true", dest="ping_scan", default=False)
         self.parser.add_option("--Pn", action="store_false", dest="host_disc", default=True)
-        self.parser.add_option("--PE", action="store_true", dest="icmp_echo", default=False)
-        self.parser.add_option("--PP", action="store_true", dest="icmp_timestamp", default=False)
-        self.parser.add_option("--PM", action="store_true", dest="icmp_netmasq", default=False)
         self.parser.add_option("--n", action="store_false", dest="resolve", default=True)
         self.parser.add_option("--F", action="store_true", dest="limit_ports", default=False)
         self.parser.add_option("--r", action="store_false", dest="randomize_ports", default=True)
@@ -91,10 +86,17 @@ class Argument:
 
         # options that store a string as their value are maps to a functional module
         # ex: these tell the fd determiner that it should add a particular module
-        self.parser.add_option("--sS", action="store_const", const="port_syn_scan", dest="port_default_scan", default="port_con_scan")
-        self.parser.add_option("--sT", action="store_const", const="port_con_scan", dest="port_default_scan", default="port_con_scan")
-        self.parser.add_option("--sA", action="store_const", const="port_ack_scan", dest="port_default_scan", default="port_con_scan")
-        self.parser.add_option("--sU", action="store_const", const="port_udp_scan", dest="port_default_scan", default="port_con_scan")
+        # host discovery methods
+        self.parser.add_option("--PE", action="store_const", const="icmp_echo", dest="disc_method", default="ping_scan")
+        self.parser.add_option("--PP", action="store_const", const="icmp_timestamp", dest="disc_method", default="ping_scan")
+        self.parser.add_option("--PM", action="store_const", const="icmp_netmasq", dest="disc_method", default="ping_scan")
+        self.parser.add_option("--sL", action="store_const", const="list_scan", dest="disc_method", default="ping_scan")
+        self.parser.add_option("--sn", action="store_const", const="ping_scan", dest="disc_method", default="ping_scan")
+        # port scanning methods
+        self.parser.add_option("--sS", action="store_const", const="port_syn_scan", dest="default_scan", default="port_con_scan")
+        self.parser.add_option("--sT", action="store_const", const="port_con_scan", dest="default_scan", default="port_con_scan")
+        self.parser.add_option("--sA", action="store_const", const="port_ack_scan", dest="default_scan", default="port_con_scan")
+        self.parser.add_option("--sU", action="store_const", const="port_udp_scan", dest="default_scan", default="port_con_scan")
 
     def load_dependencies(self):
         #breakpoint()
@@ -187,7 +189,7 @@ class Argument:
                 raise Exception("Could not understand your host descriptions")
             tmp_opt_dict = ast.literal_eval(str(tmp_options))
             # cleaned options, without false or Empty values
-            opt_dict = dict([(k, v) for k, v in tmp_opt_dict.items() if v not in [None, False]])
+            opt_dict = dict([(k, v) for k, v in tmp_opt_dict.items() if v is not None])
 
             # collect required functional modules, and arguments to those functional modules
             fm_lst, opt_args = self.collect_modules(opt_dict, hosts)
@@ -234,14 +236,16 @@ class Argument:
         for k in options.keys():
             #print(f"Checking option {k}")
             #print(opt_args)
-            self.fd_helper(k, deps, added, options)
-            if not isinstance(options[k], bool):
-                if isinstance(options[k], list):
-                    opt_args[self.set_vars[k]] = self.convert_portlist(options[k])
-                elif isinstance(options[k], int):
-                    opt_args[self.set_vars[k]] = str(options[k])
-                elif isinstance(options[k], str):
-                    opt_args[self.set_vars[k]] = f"Get-Item -Path 'Function:\\{options[k]}'"
+            if options[k] != False:
+                self.fd_helper(k, deps, added, options)
+            if isinstance(options[k], list):
+                opt_args[self.set_vars[k]] = self.convert_portlist(options[k])
+            elif isinstance(options[k], bool):
+                opt_args[self.set_vars[k]] = "$" + str(options[k])
+            elif isinstance(options[k], int):
+                opt_args[self.set_vars[k]] = str(options[k])
+            elif isinstance(options[k], str):
+                opt_args[self.set_vars[k]] = f"Get-Item -Path 'Function:\\{options[k]}'"
 
         # append HOSTS variable to opt_args
         if len(hosts) > 0:
