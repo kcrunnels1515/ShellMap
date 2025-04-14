@@ -1,26 +1,26 @@
 # IP Subnet:
 function Get-IPSubnet([IPAddress]$baseAddress, [int]$subnet, [UInt32]$pos) {
-	
+
 	# create submask by making subnet num of 1's in UInt32, and
 	# convert it into a byte array
     if ($baseAddress -eq $null) {
         return $null
     }
 	$submask = [System.BitConverter]::GetBytes([UInt32]::MaxValue -shl (32 - $subnet))
-	
-	# convert position (identifier of single host) to bytes to 
+
+	# convert position (identifier of single host) to bytes to
 	# add into final result
 	$id = [System.BitConverter]::GetBytes($pos)
-	
+
 	# byteCollector byte array to store correct order of bytes for address
 	$byteCollector = [byte[]]@(0,0,0,0)
-	
+
 	# ip address byte array is big-endian, reverse to apply submask
 	$ipBytes = @([System.Collections.Stack]::new(@([Byte[]]$baseAddress.GetAddressBytes())))
-	
+
 	# calculate last index so we don't have to access it every time
 	$lastIndex = $ipBytes.Length - 1
-	
+
 	for ( $i = 0; $i -le $lastIndex; $i++) {
 		# clear bits of base address that will be varied in subnet
 		$ipBytes[$i] = $ipBytes[$i] -band $submask[$i]
@@ -100,8 +100,14 @@ $totalHosts = 0
  # Timer:
 $stopWatch = New-Object System.Diagnostics.Stopwatch
 $stopWatch.Start();
-# Loops HOSTS:
 
+# Normally this comes after resolution, but you can't loop an empty array.
+if($HOSTS.Length -eq 0)
+{
+    Write-Host "WARNING: No targets were specified, so 0 hosts scanned."
+}
+
+# Loops HOSTS:
 foreach($hostin in $HOSTS)
 {
    # write-host "entered loop"
@@ -135,7 +141,10 @@ foreach($hostin in $HOSTS)
         $totalHosts++
         #write-host "entered subnet loop"
         $hostIP = Get-IPSubnet $hostin.ADDR $hostin.SUBN $i
-
+        if ($null -eq $hostIP) {
+            # Cannot resolve IP/improper IP:
+            Write-Host "Failed to resolve $($hostin.ADDR)"
+        }
         $output = [PSCustomObject]@{
             HOST = $hostIP
             HOSTNAME = if ($hostin.RESOLV) {$hostin.BASE_HOST} else { $hostIP }
@@ -178,4 +187,4 @@ foreach($hostin in $HOSTS)
 }
 #write-host "is this stupid fucking thing even populating: $outputObjects"
 $elapsedTime = $stopWatch.Elapsed.TotalMilliseconds
-Write-Host "Shellmap done: scanned $($totalHosts) hosts ($($hostsUp) up) in $($elapsedTime) ms."
+Write-Host "Shellmap done: $($totalHosts) IP addresses ($($hostsUp) hosts up) scanned in $($elapsedTime) ms."
