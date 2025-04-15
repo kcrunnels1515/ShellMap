@@ -403,8 +403,15 @@ if __name__ == "__main__":
     import pdb
     if len(sys.argv) > 1:
         try:
-            socket.inet_aton(sys.argv[1])
-            server_address = sys.argv[1]
+            server_host = urlparse("http://" + sys.argv[1])
+            if len(server_host.netloc) > 0:
+                server_address = server_host.netloc
+            else:
+                raise Exception
         except:
-            print(f"Invalid host IP address {sys.argv[1]}, using {server_address}")
-    run_server()
+            print(f"Invalid host IP address {sys.argv[1]}, exiting")
+            exit(1)
+    try:
+        run_server()
+    except Exception as e:
+        print(f"Encountered an exception: {e}")
