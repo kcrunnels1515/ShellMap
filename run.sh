@@ -9,24 +9,38 @@ port="8000"
 server_path="$PWD/server"
 session="shellmap_server"
 
-if [ "$#" -lt 1 ]; then
-	if which dig 2>/dev/null >/dev/null; then
-		echo "Looking up public IP address using dig..."
-		ip_addr=$(dig myip.opendns.com @resolver1.opendns.com +short | grep -v ";;")
-		echo "Public IP address found: $ip_addr"
-	else
-		echo "Please install dig or provide a public IP address"
+case "$#" in
+	0)
+		if which dig 2>/dev/null >/dev/null; then
+			echo "Looking up public IP address using dig..."
+			ip_addr=$(dig myip.opendns.com @resolver1.opendns.com +short | grep -v ";;")
+			echo "Public IP address found: $ip_addr"
+		else
+			echo "Please install dig or provide a public IP address"
+			exit
+		fi
+		;;
+	1)
+		if [ "$1" = "--help" ]; then
+			echo "Syntax: ./run.sh [ip address or domain name]"
+			exit
+		else
+			ip_addr="$1"
+		fi
+		;;
+	2)
+		ip_addr="$1"
+		if [ "$2" =~ [1-9][0-9]* ]; then
+			port="$2"
+		else
+			echo "Port invalid, using default ${port}"
+		fi
+		;;
+	*)
+		echo "Syntax: ./run.sh [ip address or domain name]"
 		exit
-	fi
-elif [ "$1" = "--help" ]; then
-	echo "Syntax: ./run.sh [ip address or domain name]"
-	exit
-elif [ "$#" -eq 2  ]; then
-	if [ "$2" =~ [1-9][0-9]* ]; then
-		port="$2"
-	fi
-fi
-
+		;;
+esac
 
 if which tmux 2>&1 1>/dev/null; then
 	tmux has-session -t $session 2>/dev/null

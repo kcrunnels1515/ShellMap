@@ -407,7 +407,11 @@ if __name__ == "__main__":
         try:
             server_host = urlparse(sys.argv[1])
             if len(server_host.netloc) > 0:
-                server_address = server_host.netloc
+                scheme = "http"
+                if len(server_host.scheme) > 0:
+                    scheme = server_host.scheme
+                server_address = scheme + "://" + server_host.netloc
+
             else:
                 raise Exception
         except:
