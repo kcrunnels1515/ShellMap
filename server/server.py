@@ -368,7 +368,11 @@ class RequestHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         query = urlparse(self.path).query
-        query_components = dict(qc.split("=") for qc in query.split("&"))
+        try:
+            query_components = dict(qc.split("=") for qc in query.split("&"))
+        except:
+            print("Got uninterpretible query")
+            return
         if len(query_components) <= 0:
             self.send_response(404)
             self.send_header('Content-type', 'text/plain')
