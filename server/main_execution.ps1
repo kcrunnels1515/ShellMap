@@ -61,7 +61,7 @@ function Write-HostOutput() {
         if ($scan_res.HOSTSTATUS -gt 0) {
             Write-Host "Host is up ($($scan_res.LATENCY) latency)"
         } elseif ($scan_res.HOSTSTATUS -lt 0) {
-            Write-Host "Host is seems down."
+            Write-Host "Host seems down."
             continue
         } else {
             Write-Host "No information on host"
