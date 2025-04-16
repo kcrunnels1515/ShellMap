@@ -50,7 +50,7 @@ excluded_ports>EXCL_PORTS<PORTS
 top_ports>TOP_PORTS<PORTS
 list_scan><HOSTS,HOST_DISC
 ping_scan><HOSTS,HOST_DISC
-host_disc,resolve,disc_method>HOST_DISC<HOSTS,DEFAULT_SCAN
+host_disc,resolve,disc_method>HOST_DISC<HOSTS,DEFAULT_SCAN,DISC_METHOD
 disc_method>DISC_METHOD<
 icmp_echo><HOSTS
 default_scan>DEFAULT_SCAN<
