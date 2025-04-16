@@ -60,7 +60,7 @@ function Write-HostOutput() {
         Write-Host "Shellmap scan report for $($scan_res.HOSTNAME) ($($hostIP))"
         if ($scan_res.HOSTSTATUS -gt 0) {
             Write-Host "Host is up ($($scan_res.LATENCY) latency)"
-        } else if ($scan_res.HOSTSTATUS -lt 0) {
+        } elseif ($scan_res.HOSTSTATUS -lt 0) {
             Write-Host "Host is seems down."
             continue
         } else {
