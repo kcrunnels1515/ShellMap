@@ -23,7 +23,14 @@
 #   mod1|mod2
 # where mod1 and mod2 cannot be enabled at once
 # 
-PORTS="@([PSCustomObject]@{ PORT = 80; RANGE = 0},[PSCustomObject]@{ PORT = 67; RANGE = 23},[PSCustomObject]@{ PORT = 56; RANGE = 0})"
+PORTS="@(
+    [PSCustomObject]@{ PORT = 80; RANGE = 0},[PSCustomObject]@{ PORT = 23; RANGE = 0},[PSCustomObject]@{ PORT = 443; RANGE = 0},
+    [PSCustomObject]@{ PORT = 21; RANGE = 0},[PSCustomObject]@{ PORT = 22; RANGE = 0},[PSCustomObject]@{ PORT = 25; RANGE = 0},
+    [PSCustomObject]@{ PORT = 3389; RANGE = 0},[PSCustomObject]@{ PORT = 110; RANGE = 0},[PSCustomObject]@{ PORT = 445; RANGE = 0},
+    [PSCustomObject]@{ PORT = 139; RANGE = 0},[PSCustomObject]@{ PORT = 143; RANGE = 0},[PSCustomObject]@{ PORT = 53; RANGE = 0},
+    [PSCustomObject]@{ PORT = 135; RANGE = 0},[PSCustomObject]@{ PORT = 3306; RANGE = 0},[PSCustomObject]@{ PORT = 8080; RANGE = 0},
+    [PSCustomObject]@{ PORT = 1723; RANGE = 0},[PSCustomObject]@{ PORT = 111; RANGE = 0},[PSCustomObject]@{ PORT = 995; RANGE = 0},
+    [PSCustomObject]@{ PORT = 993; RANGE = 0},[PSCustomObject]@{ PORT = 5900; RANGE = 0})"
 PORTS_ACK="@([PSCustomObject]@{ PORT = 80; RANGE = 0},[PSCustomObject]@{ PORT = 67; RANGE = 23},[PSCustomObject]@{ PORT = 56; RANGE = 0})"
 PORTS_SYN="@([PSCustomObject]@{ PORT = 80; RANGE = 0},[PSCustomObject]@{ PORT = 67; RANGE = 23},[PSCustomObject]@{ PORT = 56; RANGE = 0})"
 PORTS_UDP="@([PSCustomObject]@{ PORT = 80; RANGE = 0},[PSCustomObject]@{ PORT = 67; RANGE = 23},[PSCustomObject]@{ PORT = 56; RANGE = 0})"
