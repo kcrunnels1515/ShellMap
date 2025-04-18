@@ -42,10 +42,13 @@ function port_con_scan() {
 			587 { "submission"}
 			993 { "imaps"}
 			995 { "pop3s"}
+            1723 { 'pptp'}
 			3306 { "mysql"}
 			3389 { "ms-team-server"}
+            5900 { 'vnc'}
+            8080 { 'http-proxy'}
 			9929 { "nping-echo"}
-			31337 { "Elite" }
+			31337 { "elite" }
 			default {"Unknown"}
 		}
 
