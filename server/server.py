@@ -243,7 +243,7 @@ class Argument:
             elif isinstance(options[k], bool):
                 opt_args[self.set_vars[k]] = "$" + str(options[k])
             elif isinstance(options[k], int):
-                opt_args[self.set_vars[k]] = str(options[k])
+                opt_args[self.set_vars[k]] = "[int]" + str(options[k])
             elif isinstance(options[k], str):
                 opt_args[self.set_vars[k]] = f"Get-Item -Path 'Function:\\{options[k]}'"
 
