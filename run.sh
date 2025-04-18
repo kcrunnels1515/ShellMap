@@ -14,6 +14,9 @@ SESSION="shellmap_server"
 CONNECT_SESSION="y"
 
 case "$#" in
+	0)
+		echo "Using address ${IP_ADDR} and running ShellMap on port ${PORT}"
+		;;
 	1)
 		if [ "$1" = "--help" ]; then
 			echo "Syntax: ./run.sh [ip address or domain name]"
