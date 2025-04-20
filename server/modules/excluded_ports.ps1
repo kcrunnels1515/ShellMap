@@ -5,5 +5,5 @@
 
 # Removes any matches to ports from EXCL_PORTS from default PORTS and updates the variable
 function excluded_ports() {
-    return ($PORTS | Where-Object { $EXCL_PORTS -notcontains $_})
+    return ($PORTS | Where-Object { $_ -notin $EXCL_PORTS})
 }
