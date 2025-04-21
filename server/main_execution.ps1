@@ -166,7 +166,7 @@ function main_exec() {
                 if ($HOST_DISC) {
                     host_disc($output)
                 }
-                if ($output.HOSTSTATUS) {
+                if ($output.HOSTSTATUS -gt 0) {
                     $hostsUp++
                 }
                 # get the results for running the actual scan
