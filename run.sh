@@ -48,7 +48,7 @@ if which tmux 2>&1 1>/dev/null; then
 		echo "Starting ShellMap server..."
 		tmux send-keys -t shellmap_server "python3 ./server.py ${IP_ADDR} ${PORT}" C-m
 	fi
-	if [ $CONNECT_SESSION = "y" ]; then
+	if [ "$CONNECT_SESSION" = "y" ]; then
 		tmux attach-session -t $SESSION
 	fi
 else
