@@ -83,7 +83,7 @@ function main_exec() {
     if (Test-Path function:global:addn_scans){
         $ADDN_SCANS = addn_scans
     }
-    if (Test-Path function:global:top_ports) {
+    if ($TOP_PORTS -gt 0) {
         $PORTS = top_ports
     }
 
