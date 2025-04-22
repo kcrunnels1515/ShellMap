@@ -30,26 +30,26 @@ function excluded_ports() {
         }
     }
     $my_excl = @()
-    for ($exclObj in $EXCL_PORTS) {
+    foreach ($exclObj in $EXCL_PORTS) {
         for ($i = 0; $i -le $exclObj.RANGE; $i++) {
             $my_excl += $exclObj.PORT + $i
         }
     }
     $my_ports = @()
-    for ($portObj in $PORTS) {
+    foreach ($portObj in $PORTS) {
         for ($i = 0; $i -le $portObj.RANGE; $i++) {
-            if ($portObj.PORT + $i -notin $my_excls) {
+            if ($portObj.PORT + $i -notin $my_excl) {
                 $my_ports += $portObj.PORT + $i
             }
         }
     }
-    $my_ports = @($my_ports | Sort | Select -Unique)
+    $my_ports = @($my_ports | Sort-Object | Select -Unique)
     $new_ports = @()
     $index = 1
     $start = $my_ports[0]
     do {
-        if (($my_ports[$index] - $my_ports[$index - 1]) -neq 1) {
-            $new_ports += [PSCustomObject]@{PORT = $start; RANGE = $my_ports[$index] - $start}
+        if (($my_ports[$index] - $my_ports[$index - 1]) -ne 1) {
+            $new_ports += [PSCustomObject]@{PORT = $start; RANGE = $my_ports[$index - 1] - $start}
             $start = $my_ports[$index]
         }
         $index++
@@ -57,3 +57,5 @@ function excluded_ports() {
     $new_ports += [PSCustomObject]@{PORT = $start; RANGE = ($my_ports[$index - 1] - $start)}
     return $new_ports
 }
+
+excluded_ports
