@@ -36,8 +36,10 @@ DISC_METHOD = "Get-Item -Path 'Function:\ping_scan'"
 CAN_RESOLV="$false"
 ADDN_SCANS = "@()"
 HOST_DISC = "$false"
+LIMIT_PORTS="$false"
+RAND_PORTS="$true"
 ===
-ports,default_scan>PORTS<DEFAULT_SCAN
+ports,default_scan>PORTS<DEFAULT_SCAN,LIMIT_PORTS,RAND_PORTS
 ports_ack,addn_scans,port_ack_scan>PORTS_ACK<PORTS_ACK
 ports_syn,addn_scans,port_syn_scan>PORTS_SYN<PORTS_SYN
 ports_udp,addn_scans,port_udp_scan>PORTS_UDP<PORTS_UDP
@@ -57,8 +59,8 @@ default_scan>DEFAULT_SCAN<
 icmp_timestamp><HOSTS
 icmp_netmasq><HOSTS
 resolve>CAN_RESOLV<HOSTS,CAN_RESOLV
-limit_ports><PORTS
-randomize_ports><PORTS
+limit_ports>LIMIT_PORTS<PORTS
+randomize_ports>RAND_PORTS<PORTS
 service_version><
 os_detect><HOSTS
 addn_scans>ADDN_SCANS<ADDN_SCANS

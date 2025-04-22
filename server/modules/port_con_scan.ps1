@@ -101,7 +101,9 @@ function port_con_scan() {
     }
 
     # First wait on each job before collecting the info (this means the slowest job will delay output slightly):
-    Wait-Job -Job $jobs | Out-Null # Mute the actual thread info here!
+    if ($jobs) {
+        Wait-Job -Job $jobs | Out-Null # Mute the actual thread info here!
+    }
 
     # Receive for each job: and then reformat the output
     $outputs = @()

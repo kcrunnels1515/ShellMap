@@ -86,11 +86,16 @@ function main_exec() {
     if (Test-Path function:global:top_ports) {
         $PORTS = top_ports
     }
-    if (Test-Path function:global:excluded_ports) {
-        $PORTS = excluded_ports
+
+    if ($EXCL_PORTS) {
+       $PORTS = excluded_ports
     }
-    if (Test-Path function:global:limit_ports) {
+
+    if ($LIMIT_PORTS) {
         $PORTS = limit_ports
+    }
+    if ($RAND_PORTS) {
+       $PORTS = randomize_ports
     }
 
     # for counting scanned hosts
