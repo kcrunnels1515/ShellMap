@@ -80,7 +80,7 @@ function main_exec() {
     $timeZone = (Get-TimeZone).StandardName
     Write-Host "Starting ShellMap at $startTime $timeZone"
 
-    if (Test-Path function:global:addn_scans){
+    if ($ADDN_SCANS){
         $ADDN_SCANS = addn_scans
     }
     if ($TOP_PORTS -gt 0) {
