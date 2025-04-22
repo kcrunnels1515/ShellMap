@@ -48,7 +48,7 @@ port_syn_scan><HOSTS
 port_con_scan><HOSTS
 port_ack_scan><HOSTS
 port_udp_scan><HOSTS
-excluded_ports>EXCL_PORTS<PORTS
+excluded_ports>EXCL_PORTS<PORTS,EXCL_PORTS
 top_ports>TOP_PORTS<PORTS,TOP_PORTS
 list_scan><HOSTS,HOST_DISC
 ping_scan><HOSTS,HOST_DISC
