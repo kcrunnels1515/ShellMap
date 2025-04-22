@@ -177,7 +177,9 @@ function main_exec() {
                 # get the results for running the actual scan
                 # if this is a ping/list scan, shouldn't do anything
                 #write-host "running scan on host"
-                $output.SCAN_RES += default_scan($hostIP)
+                if ($PORTS) {
+                   $output.SCAN_RES += default_scan($hostIP)
+                }
                 # if more scan have been specified on particular ports, add them
                 # to the scan results list
                 foreach ($addn_scan in $ADDN_SCANS) {
