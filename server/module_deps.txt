@@ -59,7 +59,7 @@ default_scan>DEFAULT_SCAN<
 icmp_timestamp><HOSTS
 icmp_netmasq><HOSTS
 resolve>CAN_RESOLV<HOSTS,CAN_RESOLV
-limit_ports>LIMIT_PORTS<PORTS
+limit_ports>LIMIT_PORTS<PORTS,LIMIT_PORTS
 randomize_ports>RAND_PORTS<PORTS
 service_version><
 os_detect><HOSTS
