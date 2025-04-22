@@ -57,5 +57,3 @@ function excluded_ports() {
     $new_ports += [PSCustomObject]@{PORT = $start; RANGE = ($my_ports[$index - 1] - $start)}
     return $new_ports
 }
-
-excluded_ports
